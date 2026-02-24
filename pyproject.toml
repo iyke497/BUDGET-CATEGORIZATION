@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fmoh2024"
+version = "1.0.0"
+requires-python = ">=3.8.1,<4"
+dependencies = [
+    "Flask>=3.0.2,<4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9,<10",
+    "flake8>=7,<8",
+    "black>=25.11.0,<26",
+    "isort>=7,<8",
+]
+
+[tool.setuptools.package-data]
+"*" = ["**/static/**/*", "**/templates/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
