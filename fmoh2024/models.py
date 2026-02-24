@@ -1,4 +1,5 @@
 # fmoh2024/models.py
+import re
 from datetime import datetime
 from fmoh2024.extensions import db
 
@@ -139,15 +140,26 @@ class MinistryAgency(db.Model):
             self.is_self_accounting = True
     
     @staticmethod
-    def normalize_name(name):
+    def normalize_name(name: str) -> str:
         """
-        Simple normalization - uppercase and clean whitespace.
+        Normalization for FMOH Budget Data:
+        1. Uppercase and strip whitespace.
+        2. Replace '&' with 'AND'.
+        3. Remove all punctuation/special characters (except spaces).
+        4. Collapse multiple internal spaces into one.
         """
         if not name or not isinstance(name, str):
             return ""
         
+        # 1. Basic cleaning & Replace '&'
         normalized = name.upper().strip()
         normalized = normalized.replace('&', ' AND ')
+        
+        # 2. Remove all punctuation (Keep only A-Z and 0-9)
+        # [^A-Z0-9 ] means: "Find anything that is NOT a letter, number, or space"
+        normalized = re.sub(r'[^A-Z0-9 ]', '', normalized)
+        
+        # 3. Collapse multiple spaces (e.g., "BUDGET   CAT" -> "BUDGET CAT")
         normalized = ' '.join(normalized.split())
         
         return normalized
