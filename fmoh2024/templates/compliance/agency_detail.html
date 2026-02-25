@@ -1,0 +1,98 @@
+<!-- fmoh2024/templates/compliance/agency_detail.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ details.agency.agency_name }} - Compliance Details</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header { background: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .back-link { color: white; text-decoration: none; opacity: 0.8; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .stat-card .label { color: #7f8c8d; font-size: 14px; }
+        .stat-card .value { font-size: 28px; font-weight: bold; color: #2c3e50; }
+        
+        .compliance-meter { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .meter-bar { height: 30px; background: #ecf0f1; border-radius: 15px; overflow: hidden; margin: 10px 0; }
+        .meter-fill { height: 100%; background: #27ae60; width: 0%; transition: width 0.3s; }
+        
+        .project-table { background: white; border-radius: 8px; overflow: hidden; }
+        .project-table table { width: 100%; border-collapse: collapse; }
+        .project-table th { background: #34495e; color: white; padding: 12px; text-align: left; }
+        .project-table td { padding: 12px; border-bottom: 1px solid #ecf0f1; }
+        .categorized { background-color: #d4edda; }
+        .uncategorized { background-color: #f8d7da; }
+        
+        .category-details { font-size: 13px; color: #666; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="{{ url_for('compliance.dashboard', fiscal_year=fiscal_year) }}" class="back-link">← Back to Dashboard</a>
+            <h1>{{ details.agency.agency_name }}</h1>
+            <p>Code: {{ details.agency.agency_code }} | Ministry: {{ details.agency.ministry_name }}</p>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="label">Total Projects</div>
+                <div class="value">{{ details.total_projects }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Categorized</div>
+                <div class="value">{{ details.categorized_count }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Compliance</div>
+                <div class="value">{{ details.compliance.compliance_percentage }}%</div>
+            </div>
+        </div>
+        
+        <div class="compliance-meter">
+            <h3>Compliance: {{ details.compliance.compliance_percentage }}%</h3>
+            <div class="meter-bar">
+                <div class="meter-fill" style="width: {{ details.compliance.compliance_percentage }}%"></div>
+            </div>
+            <p>Status: <strong>{{ details.compliance.status.icon }} {{ details.compliance.status.label }}</strong></p>
+        </div>
+        
+        <div class="project-table">
+            <h3>Projects ({{ details.total_projects }})</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Project Code</th>
+                        <th>Project Name</th>
+                        <th>Appropriation</th>
+                        <th>Status</th>
+                        <th>Categorization</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for project in details.projects %}
+                    <tr class="{{ 'categorized' if project.is_categorized else 'uncategorized' }}">
+                        <td>{{ project.code }}</td>
+                        <td>{{ project.name }}</td>
+                        <td>₦{{ "{:,.2f}".format(project.appropriation) }}</td>
+                        <td>{{ project.status }}</td>
+                        <td>
+                            {% if project.is_categorized %}
+                                <strong>✓ Categorized</strong>
+                                <div class="category-details">
+                                    Category: {{ project.categorization.category }}<br>
+                                    Service: {{ project.categorization.health_service }}
+                                </div>
+                            {% else %}
+                                ❌ Not Categorized
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
