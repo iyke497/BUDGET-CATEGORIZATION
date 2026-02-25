@@ -12,10 +12,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=9,<10",
+    "pytest>=7.0.0,<8",  # Changed from 9 to 7.x (compatible with Python 3.9)
     "flake8>=7,<8",
-    "black>=25.11.0,<26",
-    "isort>=7,<8",
+    "black>=24.0.0,<25",  # Changed from 25.x (25.x might not exist yet)
+    "isort>=5.0.0,<6",    # Changed from 7.x to 5.x (more stable)
 ]
 
 [tool.setuptools.package-data]
