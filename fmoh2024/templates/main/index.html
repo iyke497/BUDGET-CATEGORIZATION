@@ -1,4 +1,4 @@
-<!-- fmoh2024/templates/main/index.html -->
+<!-- fmoh2024/templates/main/index.html (updated) -->
 {% extends "base.html" %}
 
 {% block title %}Home - FMOH Budget Categorization{% endblock %}
@@ -11,10 +11,10 @@
 <div class="container">
     <!-- Hero Section -->
     <div class="hero-section mt-3">
-        <h1>🏥 Federal Ministry of Health</h1>
-        <h2>Budget Categorization System 2024</h2>
+        <h1>Federal Ministry of Health</h1>
+        <h2>2024 Budget Categorization System</h2>
         <p class="lead mt-2">
-            Tracking and analyzing health sector budget compliance across all MDAs
+            Tracking and analyzing health sector budget across all MDAs
         </p>
     </div>
     
@@ -42,6 +42,53 @@
             <div class="card-label">Overall Compliance</div>
             <div class="card-value">{{ compliance_rate }}%</div>
             <div class="card-footer">across focus agencies</div>
+        </div>
+    </div>
+    
+    <!-- Charts Section -->
+    <div class="charts-grid">
+        <!-- Compliance Distribution Chart -->
+        <div class="chart-card">
+            <h3>📊 Agency Compliance</h3>
+            <div class="chart-container">
+                <canvas id="complianceChart"></canvas>
+            </div>
+            <div class="chart-footer">
+                Agencies by compliance tier
+            </div>
+        </div>
+        
+        <!-- Intermediate Outcome Distribution Chart -->
+        <div class="chart-card">
+            <h3>🎯 Intermediate Outcomes</h3>
+            <div class="chart-container">
+                <canvas id="intermediateOutcomeChart"></canvas>
+            </div>
+            <div class="chart-footer">
+                Distribution of intermediate outcomes
+            </div>
+        </div>
+        
+        <!-- Category Distribution Chart -->
+        <div class="chart-card">
+            <h3>📁 Budget Categories</h3>
+            <div class="chart-container">
+                <canvas id="categoryChart"></canvas>
+            </div>
+            <div class="chart-footer">
+                Projects by budget category
+            </div>
+        </div>
+        
+        <!-- Healthcare Service Distribution Chart -->
+        <div class="chart-card">
+            <h3>🏥 Healthcare Services</h3>
+            <div class="chart-container">
+                <canvas id="healthcareServiceChart"></canvas>
+            </div>
+            <div class="chart-footer">
+                Distribution of healthcare services
+            </div>
         </div>
     </div>
     
@@ -95,4 +142,9 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/main/home.js') }}"></script>
 {% endblock %}
