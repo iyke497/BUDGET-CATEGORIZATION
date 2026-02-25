@@ -1,11 +1,17 @@
 # fmoh2024/commands.py
 import click
+import requests
+import time
+import tempfile
+import os
+import logging
 import pandas as pd
 from flask.cli import with_appcontext
 from datetime import datetime
 from fmoh2024.extensions import db
-from fmoh2024.models import MinistryAgency, Project
+from fmoh2024.models import MinistryAgency, Project, SurveyResponse
 
+logger = logging.getLogger(__name__)
 
 def normalize_name(name):
     """Normalize ministry/agency names for consistent matching"""
@@ -301,10 +307,398 @@ def init_db_command():
     db.create_all()
     click.echo("✅ Database tables created successfully!")
 
+@click.command('fetch-survey-data')
+@click.option('--bearer-token', envvar='SURVEY_BEARER_TOKEN', 
+              help='Bearer token for API authentication (or set SURVEY_BEARER_TOKEN env var)')
+@click.option('--org-id', envvar='ORGANIZATION_ID',
+              help='Organization ID for API authentication (or set ORGANIZATION_ID env var)')
+@click.option('--base-url', default='https://api.eyemark.ng', 
+              help='Base URL for the API')
+@click.option('--survey-id', default='35e0adf5-11b2-456b-8f84-071a3129f20b',
+              help='Survey ID to fetch')
+@click.option('--poll-interval', default=5, 
+              help='Seconds between status polling attempts')
+@click.option('--max-attempts', default=60, 
+              help='Maximum number of polling attempts')
+@click.option('--fiscal-year', default='2024',
+              help='Fiscal year for this data')
+@with_appcontext
+def fetch_survey_data_command(bearer_token, org_id, base_url, survey_id, 
+                            poll_interval, max_attempts, fiscal_year):
+    """
+    Fetch survey data from Eyemark API:
+    1. Triggers report generation
+    2. Polls for status until ready
+    3. Downloads the Excel file
+    4. Imports data into SurveyResponse table
+    """
+    
+    if not bearer_token or not org_id:
+        click.echo("❌ Error: Both bearer token and organization ID are required", err=True)
+        click.echo("   Set them via --bearer-token/--org-id or environment variables")
+        return
+    
+    headers = {
+        'Authorization': f'Bearer {bearer_token}',
+        'X-Organization-ID': org_id,
+        'Content-Type': 'application/json'
+    }
+    
+    # Step 1: Trigger report generation
+    trigger_url = f"{base_url}/api/surveys/{survey_id}/report/"
+    click.echo(f"🔄 Triggering report generation for survey {survey_id}...")
+    
+    try:
+        trigger_response = requests.get(trigger_url, headers=headers)
+        trigger_response.raise_for_status()
+        trigger_data = trigger_response.json()
+    except requests.exceptions.RequestException as e:
+        click.echo(f"❌ Failed to trigger report: {e}", err=True)
+        return
+    except ValueError as e:
+        click.echo(f"❌ Invalid JSON response: {e}", err=True)
+        return
+    
+    if not trigger_data.get('status'):
+        click.echo(f"❌ API error: {trigger_data.get('message', 'Unknown error')}", err=True)
+        return
+    
+    task_id = trigger_data['data']['task_id']
+    click.echo(f"✅ Report generation triggered! Task ID: {task_id}")
+    
+    # Step 2: Poll for status
+    status_url = f"{base_url}/api/surveys/report-status/"
+    click.echo(f"⏳ Polling for status (will check every {poll_interval} seconds)...")
+    
+    for attempt in range(max_attempts):
+        time.sleep(poll_interval)
+        
+        try:
+            status_response = requests.get(
+                status_url, 
+                headers=headers,
+                params={'task_id': task_id}
+            )
+            status_response.raise_for_status()
+            status_data = status_response.json()
+        except requests.exceptions.RequestException as e:
+            click.echo(f"⚠️  Polling error (attempt {attempt + 1}): {e}", err=True)
+            continue
+        
+        if not status_data.get('status'):
+            click.echo(f"⚠️  API error: {status_data.get('message', 'Unknown error')}")
+            continue
+        
+        current_status = status_data['data']['status']
+        click.echo(f"   Status: {current_status}")
+        
+        if current_status == 'SUCCESS':
+            file_url = status_data['data']['result']['file_url']
+            filename = status_data['data']['result']['filename']
+            total_responses = status_data['data']['result'].get('total_responses', 'unknown')
+            click.echo(f"✅ Report ready! {total_responses} responses available")
+            click.echo(f"   Filename: {filename}")
+            break
+        elif current_status == 'FAILURE':
+            click.echo("❌ Report generation failed", err=True)
+            return
+        elif current_status in ['PENDING', 'PROCESSING', 'STARTED']:
+            continue
+        else:
+            click.echo(f"⚠️  Unknown status: {current_status}")
+            continue
+    else:
+        click.echo(f"❌ Timed out after {max_attempts} polling attempts", err=True)
+        return
+    
+    # Step 3: Download the Excel file
+    click.echo("📥 Downloading Excel file...")
+    
+    try:
+        # Download with streaming to handle large files
+        file_response = requests.get(file_url, stream=True)
+        file_response.raise_for_status()
+        
+        # Save to temporary file
+        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp_file:
+            for chunk in file_response.iter_content(chunk_size=8192):
+                tmp_file.write(chunk)
+            temp_path = tmp_file.name
+        
+        click.echo(f"✅ Downloaded to temporary file: {temp_path}")
+        
+        # Step 4: Import the Excel data
+        import_survey_excel(temp_path, fiscal_year, task_id)
+        
+        # Clean up temp file
+        os.unlink(temp_path)
+        click.echo(f"🧹 Cleaned up temporary file: {temp_path}")
+        
+    except requests.exceptions.RequestException as e:
+        click.echo(f"❌ Failed to download file: {e}", err=True)
+        return
+    except Exception as e:
+        click.echo(f"❌ Error processing file: {e}", err=True)
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+        return
+
+
+def import_survey_excel(file_path, fiscal_year, batch_id):
+    """
+    Import survey data from Excel file into SurveyResponse table.
+    Uses upsert logic to avoid duplicates.
+    """
+    click.echo(f"\n📊 Importing survey data from Excel...")
+    
+    try:
+        # Read Excel with header in row 2
+        df = pd.read_excel(file_path, header=1, dtype=str)
+        click.echo(f"✅ Found {len(df)} rows in Excel file")
+        
+        # Clean up column names
+        df.columns = [str(col).strip() for col in df.columns]
+        click.echo(f"📋 Columns found: {', '.join(df.columns)}")
+        
+        # Track statistics
+        stats = {
+            'created': 0,
+            'updated': 0,
+            'skipped': 0,
+            'errors': 0
+        }
+        
+        for idx, row in df.iterrows():
+            try:
+                # Skip if budget line is empty
+                budget_line = str(row.get('WHAT IS THE BUDGE LINE', '')).strip()
+                if pd.isna(budget_line) or budget_line == '' or budget_line.lower() == 'nan':
+                    stats['skipped'] += 1
+                    continue
+                
+                # Clean appropriation value
+                appropriation = clean_numeric(row.get('What is the Appropriation'))
+                
+                # Check if response already exists
+                existing = SurveyResponse.query.filter_by(
+                    budget_line=budget_line,
+                    mda=str(row.get('What is the MDA', '')).strip(),
+                    fiscal_year=fiscal_year
+                ).first()
+                
+                if existing:
+                    # Update existing record with new data
+                    existing.responder = str(row.get('Responder', '')).strip()
+                    existing.appropriation = appropriation
+                    existing.intermediate_outcome = str(row.get('WHAT INTERMEDIATE OUTCOME DOES THIS BUDGET/PROJECT SPEAK TO', '')).strip()
+                    existing.category = str(row.get('CATEGORY', '')).strip()
+                    existing.health_care_service = str(row.get('HEALTH CARE SERVICE', '')).strip()
+                    existing.primary_health_care = str(row.get('PRIMARY HEALTH CARE SERVICES', '')).strip()
+                    existing.secondary_health_care = str(row.get('SECONDARY HEALTH CARE SERVICES', '')).strip()
+                    existing.tertiary_health_care = str(row.get('TERTIARY HEALTH CARE SERVICES', '')).strip()
+                    existing.import_batch = batch_id  # Update batch to latest
+                    existing.extracted_ergp_code = SurveyResponse.extract_ergp_code(budget_line)
+                    existing.updated_at = datetime.utcnow()
+                    
+                    # If it was previously matched, maybe we need to re-evaluate?
+                    if existing.is_matched:
+                        existing.is_matched = False  # Force re-match? Or keep?
+                        existing.matched_at = None
+                    
+                    stats['updated'] += 1
+                else:
+                    # Create new response
+                    response = SurveyResponse(
+                        responder=str(row.get('Responder', '')).strip(),
+                        budget_line=budget_line,
+                        mda=str(row.get('What is the MDA', '')).strip(),
+                        appropriation=appropriation,
+                        intermediate_outcome=str(row.get('WHAT INTERMEDIATE OUTCOME DOES THIS BUDGET/PROJECT SPEAK TO', '')).strip(),
+                        category=str(row.get('CATEGORY', '')).strip(),
+                        health_care_service=str(row.get('HEALTH CARE SERVICE', '')).strip(),
+                        primary_health_care=str(row.get('PRIMARY HEALTH CARE SERVICES', '')).strip(),
+                        secondary_health_care=str(row.get('SECONDARY HEALTH CARE SERVICES', '')).strip(),
+                        tertiary_health_care=str(row.get('TERTIARY HEALTH CARE SERVICES', '')).strip(),
+                        fiscal_year=fiscal_year,
+                        import_batch=batch_id
+                    )
+                    db.session.add(response)
+                    stats['created'] += 1
+                
+                # Commit every 100 records
+                if (stats['created'] + stats['updated']) % 100 == 0:
+                    db.session.commit()
+                    click.echo(f"  ⏳ Processed {stats['created'] + stats['updated']} responses...")
+                    
+            except Exception as e:
+                click.echo(f"⚠️  Error at row {idx + 3}: {e}", err=True)
+                stats['errors'] += 1
+                db.session.rollback()
+        
+        # Final commit
+        db.session.commit()
+        
+        # Show summary
+        click.echo("\n" + "="*50)
+        click.echo("📊 SURVEY IMPORT SUMMARY")
+        click.echo("="*50)
+        click.echo(f"✅ Created: {stats['created']}")
+        click.echo(f"🔄 Updated: {stats['updated']}")
+        click.echo(f"⏭️  Skipped: {stats['skipped']}")
+        click.echo(f"⚠️  Errors: {stats['errors']}")
+        
+        # Show ERGP extraction stats
+        total_processed = stats['created'] + stats['updated']
+        if total_processed > 0:
+            with_extracted = SurveyResponse.query.filter(
+                SurveyResponse.import_batch == batch_id,
+                SurveyResponse.extracted_ergp_code.isnot(None)
+            ).count()
+            
+            click.echo(f"\n🔍 ERGP Code Extraction:")
+            click.echo(f"   Extracted: {with_extracted} responses")
+            click.echo(f"   Rate: {(with_extracted/total_processed)*100:.1f}%")
+        
+    except Exception as e:
+        click.echo(f"❌ Failed to import Excel: {e}", err=True)
+        db.session.rollback()
+        raise
+
+
+def clean_numeric(value):
+    """Clean numeric values from Excel."""
+    if pd.isna(value) or value is None:
+        return None
+    try:
+        # Remove commas and spaces, convert to float
+        cleaned = str(value).replace(',', '').replace(' ', '')
+        return float(cleaned) if cleaned else None
+    except (ValueError, TypeError):
+        return None
+
+
+@click.command('match-survey-responses')
+@click.option('--batch-id', help='Specific batch to match (optional)')
+@click.option('--fiscal-year', default='2024', help='Fiscal year to process')
+@click.option('--dry-run', is_flag=True, help='Show what would be matched without committing')
+@with_appcontext
+def match_survey_responses_command(batch_id, fiscal_year, dry_run):
+    """
+    Match survey responses to projects based on extracted ERGP codes.
+    Updates project_id and sets is_matched flag.
+    """
+    
+    # Build query for unmatched responses
+    query = SurveyResponse.query.filter_by(
+        is_matched=False,
+        fiscal_year=fiscal_year
+    ).filter(SurveyResponse.extracted_ergp_code.isnot(None))
+    
+    if batch_id:
+        query = query.filter_by(import_batch=batch_id)
+    
+    total = query.count()
+    if total == 0:
+        click.echo("✅ No unmatched responses found!")
+        return
+    
+    click.echo(f"\n🔍 Found {total} unmatched responses with ERGP codes")
+    
+    stats = {
+        'matched': 0,
+        'project_not_found': 0,
+        'already_matched': 0,
+        'errors': 0
+    }
+    
+    # Show sample if dry run
+    if dry_run:
+        samples = query.limit(10).all()
+        click.echo("\n📝 Sample responses to match:")
+        for resp in samples:
+            click.echo(f"  ID {resp.id}: {resp.budget_line[:60]}...")
+            click.echo(f"      ERGP: {resp.extracted_ergp_code}")
+        return
+    
+    # Process in batches
+    processed = 0
+    offset = 0
+    batch_size = 100  # Stream in batches of 100
+
+    while offset < total:
+        # Get a batch of responses
+        batch = query.limit(batch_size).offset(offset).all()
+        for response in batch:
+            try:
+                # Find project by ERGP code
+                # project = Project.query.filter_by(code=response.extracted_ergp_code).first()
+
+                ergp_code = response.extracted_ergp_code
+                project = Project.query.filter(
+                    (Project.code == ergp_code) | 
+                    (Project.code == f'ERGP{ergp_code}')  # Some might be uppercase
+                ).first()
+
+                # Add logging to see what's happening
+                if project:
+                    click.echo(f"  ✅ Found project {project.id} for ERGP {ergp_code}")
+                else:
+                    click.echo(f"  ❌ No project found for ERGP {ergp_code}")
+                
+                if project:
+                    response.project_id = project.id
+                    response.is_matched = True
+                    response.matched_at = datetime.utcnow()
+                    response.match_method = 'auto_extract'
+                    stats['matched'] += 1
+                    
+                else:
+                    stats['project_not_found'] += 1
+                    
+            except Exception as e:
+                click.echo(f"⚠️  Error processing response {response.id}: {e}")
+                stats['errors'] += 1
+        
+            processed += 1
+
+        # Commit after each batch
+        db.session.commit()
+        click.echo(f"  ⏳ Processed {processed}/{total}...")
+
+        # Move to next batch
+        offset += batch_size
+
+        if offset < total:
+            time.sleep(0.75)  # Small sleep to avoid overwhelming the database
+    
+    # Show summary
+    click.echo("\n" + "="*50)
+    click.echo("📊 MATCHING SUMMARY")
+    click.echo("="*50)
+    click.echo(f"✅ Matched to project: {stats['matched']}")
+    click.echo(f"❌ Project not found: {stats['project_not_found']}")
+    click.echo(f"⚠️  Errors: {stats['errors']}")
+    
+    if stats['matched'] > 0:
+        # Show sample matches
+        samples = SurveyResponse.query.filter_by(
+            is_matched=True,
+            match_method='auto_extract'
+        ).order_by(SurveyResponse.matched_at.desc()).limit(5).all()
+        
+        click.echo("\n📝 Sample matches:")
+        for resp in samples:
+            click.echo(f"  Response {resp.id} → Project {resp.project_id} (ERGP: {resp.extracted_ergp_code})")
+    
+    click.echo("="*50)
+
+
 def register_commands(app):
     """Register CLI commands with the Flask app."""
     app.cli.add_command(import_excel_command)
     app.cli.add_command(clear_data_command)
     app.cli.add_command(list_agencies_command)
     app.cli.add_command(clean_agency_codes_command)
+    app.cli.add_command(fetch_survey_data_command)
+    app.cli.add_command(match_survey_responses_command)
     app.cli.add_command(init_db_command)

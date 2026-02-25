@@ -78,6 +78,18 @@ class Project(db.Model):
             'agency_id': self.agency_id,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+    
+    def get_categorization(self):
+        """Get the most recent survey categorization for this project."""
+        if not self.survey_responses:
+            return None
+        
+        # Return the most recent matched response
+        latest = self.survey_responses.filter_by(
+            is_matched=True
+        ).order_by(SurveyResponse.import_date.desc()).first()
+        
+        return latest
 
 class MinistryAgency(db.Model):
     """Normalized reference table for ministries and their agencies from GIFMIS coding system"""
@@ -257,3 +269,152 @@ class MinistryAgency(db.Model):
             })
         
         return list(ministries.values())
+
+class SurveyResponse(db.Model):
+    """Stores raw survey responses about budget projects for categorization."""
+    __tablename__ = 'survey_responses'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # ===== RESPONDENT INFORMATION =====
+    responder = db.Column(db.String(200), nullable=True, index=True)
+    
+    # ===== BUDGET PROJECT REFERENCE (contains ERGP code) =====
+    budget_line = db.Column(db.Text, nullable=False)  # "WHAT IS THE BUDGE LINE"
+    
+    # ===== MDA (Ministry/Department/Agency) =====
+    mda = db.Column(db.String(300), nullable=False, index=True)  # "What is the MDA"
+    
+    # ===== BUDGET AMOUNT =====
+    appropriation = db.Column(db.Numeric(20, 2), nullable=True)  # "What is the Appropriation"
+    
+    # ===== OUTCOME CLASSIFICATION =====
+    intermediate_outcome = db.Column(db.Text, nullable=True)  # "WHAT INTERMEDIATE OUTCOME DOES THIS BUDGET/PROJECT SPEAK TO"
+    
+    # ===== HEALTH CATEGORIZATION =====
+    category = db.Column(db.String(200), nullable=True, index=True)  # "CATEGORY"
+    health_care_service = db.Column(db.Text, nullable=True)  # "HEALTH CARE SERVICE"
+    primary_health_care = db.Column(db.Text, nullable=True)  # "PRIMARY HEALTH CARE SERVICES"
+    secondary_health_care = db.Column(db.Text, nullable=True)  # "SECONDARY HEALTH CARE SERVICES"
+    tertiary_health_care = db.Column(db.Text, nullable=True)  # "TERTIARY HEALTH CARE SERVICES"
+    
+    # ===== NORMALIZED FIELDS FOR EXTRACTION =====
+    # We'll store the extracted ERGP code for faster querying
+    extracted_ergp_code = db.Column(db.String(50), nullable=True, index=True)
+    
+    # ===== FOREIGN KEY TO PROJECT =====
+    project_id = db.Column(
+        db.Integer, 
+        db.ForeignKey('projects.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True
+    )
+    
+    # ===== RELATIONSHIP =====
+    # This creates the bidirectional link
+    project = db.relationship('Project', backref=db.backref(
+        'survey_responses', 
+        lazy='dynamic',
+        cascade='save-update'
+    ))
+    
+    # ===== METADATA =====
+    fiscal_year = db.Column(db.String(4), default='2024', index=True)
+    import_batch = db.Column(db.String(50), nullable=True, index=True)
+    import_date = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # ===== MATCHING STATUS =====
+    is_matched = db.Column(db.Boolean, default=False, index=True)
+    matched_at = db.Column(db.DateTime, nullable=True)
+    match_method = db.Column(db.String(50), nullable=True)  # 'auto_extract', 'manual', etc.
+    
+    # ===== AUDIT =====
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # ===== INDEXES FOR PERFORMANCE =====
+    __table_args__ = (
+        db.Index('idx_survey_unmatched', 'is_matched', 'fiscal_year'),
+        db.Index('idx_survey_batch', 'import_batch', 'is_matched'),
+        db.Index('idx_survey_ergp_lookup', 'extracted_ergp_code', 'is_matched'),
+    )
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Auto-extract ERGP code when budget_line is set
+        if self.budget_line and not self.extracted_ergp_code:
+            self.extracted_ergp_code = self.extract_ergp_code(self.budget_line)
+    
+    @staticmethod
+    def extract_ergp_code(budget_line):
+        """
+        Extract ERGP code from budget line text.
+        Expected format: "description-ergp12345678" or similar
+        """
+        if not budget_line or not isinstance(budget_line, str):
+            return None
+        
+        import re
+        
+        # Pattern 1: Look for 'ergp' followed by numbers (case insensitive)
+        match = re.search(r'ergp[_-]?(\d+)', budget_line.lower())
+        if match:
+            return match.group(1)
+        
+        # Pattern 2: Look for numbers at the end (if no ergp prefix)
+        match = re.search(r'(\d+)$', budget_line.strip())
+        if match:
+            return match.group(1)
+        
+        # Pattern 3: Look for any 8+ digit number (ERGP codes are typically long)
+        match = re.search(r'(\d{8,})', budget_line)
+        if match:
+            return match.group(1)
+        
+        return None
+    
+    def match_to_project(self):
+        """
+        Attempt to match this survey response to a project
+        based on extracted ERGP code.
+        """
+        if not self.extracted_ergp_code:
+            self.extracted_ergp_code = self.extract_ergp_code(self.budget_line)
+            if not self.extracted_ergp_code:
+                return None
+        
+        project = Project.query.filter_by(code=self.extracted_ergp_code).first()
+        
+        if project:
+            self.project_id = project.id
+            self.is_matched = True
+            self.matched_at = datetime.utcnow()
+            self.match_method = 'auto_extract'
+            
+        return project
+    
+    def to_dict(self):
+        """Convert to dictionary for API responses."""
+        return {
+            'id': self.id,
+            'responder': self.responder,
+            'budget_line': self.budget_line,
+            'extracted_ergp_code': self.extracted_ergp_code,
+            'mda': self.mda,
+            'appropriation': float(self.appropriation) if self.appropriation else None,
+            'intermediate_outcome': self.intermediate_outcome,
+            'category': self.category,
+            'health_care_service': self.health_care_service,
+            'primary_health_care': self.primary_health_care,
+            'secondary_health_care': self.secondary_health_care,
+            'tertiary_health_care': self.tertiary_health_care,
+            'project_id': self.project_id,
+            'fiscal_year': self.fiscal_year,
+            'is_matched': self.is_matched,
+            'matched_at': self.matched_at.isoformat() if self.matched_at else None,
+            'import_batch': self.import_batch,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+    
+    def __repr__(self):
+        return f'<SurveyResponse {self.id}: {self.budget_line[:50]}...>'
