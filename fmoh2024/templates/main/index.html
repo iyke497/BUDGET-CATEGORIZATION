@@ -1,0 +1,98 @@
+<!-- fmoh2024/templates/main/index.html -->
+{% extends "base.html" %}
+
+{% block title %}Home - FMOH Budget Categorization{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Hero Section -->
+    <div class="hero-section mt-3">
+        <h1>🏥 Federal Ministry of Health</h1>
+        <h2>Budget Categorization System 2024</h2>
+        <p class="lead mt-2">
+            Tracking and analyzing health sector budget compliance across all MDAs
+        </p>
+    </div>
+    
+    <!-- Stats Overview -->
+    <div class="summary-grid">
+        <div class="summary-card primary">
+            <div class="card-label">Total Projects</div>
+            <div class="card-value">{{ total_projects }}</div>
+            <div class="card-footer">across all MDAs</div>
+        </div>
+        
+        <div class="summary-card success">
+            <div class="card-label">Categorized Projects</div>
+            <div class="card-value">{{ categorized_projects }}</div>
+            <div class="card-footer">{{ categorization_rate }}% of total</div>
+        </div>
+        
+        <div class="summary-card warning">
+            <div class="card-label">Focus Agencies</div>
+            <div class="card-value">{{ focus_agencies }}</div>
+            <div class="card-footer">with codes starting 521</div>
+        </div>
+        
+        <div class="summary-card danger">
+            <div class="card-label">Overall Compliance</div>
+            <div class="card-value">{{ compliance_rate }}%</div>
+            <div class="card-footer">across focus agencies</div>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="card mt-3">
+        <div class="card-header">
+            <h3>Quick Actions</h3>
+        </div>
+        <div class="quick-actions-grid">
+            <a href="{{ url_for('compliance.dashboard') }}" class="action-card">
+                <div class="action-icon">📊</div>
+                <div class="action-title">Compliance Dashboard</div>
+                <div class="action-desc">View agency compliance metrics</div>
+            </a>
+            
+            <a href="#" class="action-card">
+                <div class="action-icon">📥</div>
+                <div class="action-title">Import Survey Data</div>
+                <div class="action-desc">Fetch latest survey responses</div>
+            </a>
+            
+            <a href="#" class="action-card">
+                <div class="action-icon">🔍</div>
+                <div class="action-title">Match Responses</div>
+                <div class="action-desc">Match surveys to projects</div>
+            </a>
+            
+            <a href="#" class="action-card">
+                <div class="action-icon">📈</div>
+                <div class="action-title">Generate Reports</div>
+                <div class="action-desc">Export compliance reports</div>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="card mt-3">
+        <div class="card-header">
+            <h3>Recent Activity</h3>
+        </div>
+        <div class="activity-list">
+            {% for activity in recent_activities %}
+            <div class="activity-item">
+                <span class="activity-time">{{ activity.time }}</span>
+                <span class="activity-icon">{{ activity.icon }}</span>
+                <span class="activity-text">{{ activity.text }}</span>
+            </div>
+            {% else %}
+            <p class="text-center text-muted">No recent activity</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

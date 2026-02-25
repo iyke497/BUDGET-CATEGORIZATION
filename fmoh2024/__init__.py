@@ -1,8 +1,8 @@
 from flask import Flask
 import os
 
-from fmoh2024 import views
 from fmoh2024.compliance import bp as compliance_bp
+from fmoh2024.main import bp as main_bp
 from fmoh2024.logging import init_logging
 from fmoh2024.config import config
 from fmoh2024.extensions import db
@@ -25,7 +25,7 @@ def create_app(config_name=None):
     register_commands(app)
     
     # Register blueprints
+    app.register_blueprint(main_bp)
     app.register_blueprint(compliance_bp)
-    app.register_blueprint(views.bp)
     
     return app

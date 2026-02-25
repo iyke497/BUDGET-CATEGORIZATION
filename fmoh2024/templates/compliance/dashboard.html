@@ -1,83 +1,82 @@
 <!-- fmoh2024/templates/compliance/dashboard.html -->
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Compliance Dashboard - 2024 Budget</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .header { background: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        .summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .card h3 { margin: 0 0 10px 0; color: #7f8c8d; font-size: 14px; }
-        .card .number { font-size: 32px; font-weight: bold; color: #2c3e50; }
-        .card .small { font-size: 14px; color: #7f8c8d; }
-        
-        .agency-table { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .agency-table table { width: 100%; border-collapse: collapse; }
-        .agency-table th { background: #34495e; color: white; padding: 12px; text-align: left; }
-        .agency-table td { padding: 12px; border-bottom: 1px solid #ecf0f1; }
-        .agency-table tr:hover { background: #f8f9fa; }
-        
-        .compliance-bar { width: 100px; height: 8px; background: #ecf0f1; border-radius: 4px; overflow: hidden; }
-        .compliance-fill { height: 100%; background: #27ae60; }
-        .compliance-fill.low { background: #e74c3c; }
-        .compliance-fill.medium { background: #f39c12; }
-        
-        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
-        .status-high { background: #d4edda; color: #155724; }
-        .status-medium { background: #fff3cd; color: #856404; }
-        .status-low { background: #fff3cd; color: #856404; }
-        .status-zero { background: #f8d7da; color: #721c24; }
-        
-        .filter-bar { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; }
-        .filter-bar select { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🏥 FMOH Budget Compliance Dashboard 2024</h1>
-            <p>Agencies with codes starting with 521 (Focus Agencies)</p>
+{% extends "base.html" %}
+
+{% block title %}Compliance Dashboard - FMOH Budget{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/compliance.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<div class="container">
+    <!-- Summary Cards -->
+    <div class="summary-grid">
+        <div class="summary-card primary">
+            <div class="card-label">Total Agencies</div>
+            <div class="card-value">{{ summary.total_agencies }}</div>
+            <div class="card-footer">with 521 codes</div>
         </div>
         
-        <div class="filter-bar">
-            <select id="fiscalYear">
+        <div class="summary-card success">
+            <div class="card-label">Total Projects</div>
+            <div class="card-value">{{ summary.total_projects }}</div>
+            <div class="card-footer">across all agencies</div>
+        </div>
+        
+        <div class="summary-card warning">
+            <div class="card-label">Categorized</div>
+            <div class="card-value">{{ summary.total_categorized }}</div>
+            <div class="card-footer">
+                {{ (summary.total_categorized/summary.total_projects*100)|round(1) if summary.total_projects > 0 else 0 }}% of total
+            </div>
+        </div>
+        
+        <div class="summary-card danger">
+            <div class="card-label">Overall Compliance</div>
+            <div class="card-value">{{ summary.overall_compliance }}%</div>
+            <div class="card-footer">
+                High: {{ summary.tiers.high }} | Med: {{ summary.tiers.medium }} | Low: {{ summary.tiers.low }} | Zero: {{ summary.tiers.zero }}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <div class="filter-group">
+            <label for="fiscalYear">Fiscal Year:</label>
+            <select id="fiscalYear" class="filter-select">
                 <option value="2024" {% if fiscal_year == '2024' %}selected{% endif %}>2024</option>
                 <option value="2025" {% if fiscal_year == '2025' %}selected{% endif %}>2025</option>
             </select>
-            <button onclick="window.location.href='?fiscal_year='+document.getElementById('fiscalYear').value">
-                Apply
-            </button>
         </div>
         
-        <div class="summary-cards">
-            <div class="card">
-                <h3>Total Agencies</h3>
-                <div class="number">{{ summary.total_agencies }}</div>
-                <div class="small">with codes starting 521</div>
-            </div>
-            <div class="card">
-                <h3>Total Projects</h3>
-                <div class="number">{{ summary.total_projects }}</div>
-                <div class="small">across all agencies</div>
-            </div>
-            <div class="card">
-                <h3>Categorized Projects</h3>
-                <div class="number">{{ summary.total_categorized }}</div>
-                <div class="small">{{ (summary.total_categorized/summary.total_projects*100)|round(1) if summary.total_projects > 0 else 0 }}% of total</div>
-            </div>
-            <div class="card">
-                <h3>Overall Compliance</h3>
-                <div class="number">{{ summary.overall_compliance }}%</div>
-                <div class="small">
-                    High: {{ summary.tiers.high }} | Med: {{ summary.tiers.medium }} | Low: {{ summary.tiers.low }} | Zero: {{ summary.tiers.zero }}
-                </div>
-            </div>
+        <div class="filter-group">
+            <label for="statusFilter">Status:</label>
+            <select id="statusFilter" class="filter-select">
+                <option value="">All</option>
+                <option value="high">High Compliance</option>
+                <option value="medium">Medium Compliance</option>
+                <option value="low">Low Compliance</option>
+                <option value="zero">No Compliance</option>
+            </select>
         </div>
         
-        <div class="agency-table">
-            <table>
+        <button id="exportData" class="export-btn">
+            <span>📥</span> Export CSV
+        </button>
+    </div>
+    
+    <!-- Agency Table -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Agency Compliance Overview</h2>
+            <span class="badge">{{ compliance_data|length }} agencies</span>
+        </div>
+        
+        <div class="table-responsive">
+            <table id="agencyTable" class="agency-table display" style="width:100%">
                 <thead>
                     <tr>
                         <th>Agency</th>
@@ -92,27 +91,35 @@
                 </thead>
                 <tbody>
                     {% for item in compliance_data %}
-                    <tr>
-                        <td><strong>{{ item.agency.agency_name }}</strong></td>
-                        <td>{{ item.agency.ministry_name }}</td>
-                        <td>{{ item.agency.agency_code }}</td>
-                        <td>{{ item.total_projects }}</td>
-                        <td>{{ item.categorized_projects }}</td>
+                    <tr class="agency-row" 
+                        data-status="{{ item.status.tier }}" 
+                        data-compliance="{{ item.compliance_percentage }}">
                         <td>
-                            <div class="compliance-bar">
-                                <div class="compliance-fill {{ 'low' if item.compliance_percentage < 50 else 'medium' if item.compliance_percentage < 80 else '' }}" 
-                                     style="width: {{ item.compliance_percentage }}%"></div>
-                            </div>
-                            {{ item.compliance_percentage }}%
+                            <div class="agency-name">{{ item.agency.agency_name }}</div>
+                            <div class="ministry-name-sub">{{ item.agency.ministry_name }}</div>
                         </td>
-                        <td>
+                        <td class="ministry-name">{{ item.agency.ministry_name }}</td>
+                        <td class="agency-code">{{ item.agency.agency_code }}</td>
+                        <td class="total-projects">{{ item.total_projects }}</td>
+                        <td class="categorized-projects">{{ item.categorized_projects }}</td>
+                        <td data-order="{{ item.compliance_percentage }}">
+                            <div class="compliance-cell">
+                                <div class="compliance-bar-container">
+                                    <div class="compliance-bar {{ item.status.tier }}" 
+                                         style="width: {{ item.compliance_percentage }}%"></div>
+                                </div>
+                                <span class="compliance-value">{{ item.compliance_percentage }}%</span>
+                            </div>
+                        </td>
+                        <td data-order="{{ item.compliance_percentage }}">
                             <span class="status-badge status-{{ item.status.tier }}">
                                 {{ item.status.icon }} {{ item.status.label }}
                             </span>
                         </td>
                         <td>
-                            <a href="{{ url_for('compliance.agency_detail', agency_id=item.agency.id, fiscal_year=fiscal_year) }}">
-                                View Details →
+                            <a href="{{ url_for('compliance.agency_detail', agency_id=item.agency.id, fiscal_year=fiscal_year) }}" 
+                               class="btn btn-primary btn-sm">
+                                Details
                             </a>
                         </td>
                     </tr>
@@ -122,10 +129,21 @@
         </div>
     </div>
     
-    <script>
-        document.getElementById('fiscalYear').addEventListener('change', function() {
-            window.location.href = '?fiscal_year=' + this.value;
-        });
-    </script>
-</body>
-</html>
+    <!-- Optional Chart -->
+    <div class="card mt-3">
+        <div class="card-header">
+            <h3>Compliance Distribution</h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="complianceChart"></canvas>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/compliance/dashboard.js') }}"></script>
+{% endblock %}

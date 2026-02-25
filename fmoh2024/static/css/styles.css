@@ -1,0 +1,15 @@
+/* fmoh2024/static/css/styles.css */
+/* ── Eyemark Additional Styles ─────────────────────────────────────────────
+   Supplementary styles for message components
+   ───────────────────────────────────────────────────────────────────────── */
+
+.message {
+    padding: 14px 18px;
+    font-size: 14px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    border-radius: 6px;
+    border-left: 3px solid var(--primary-color);
+    background: var(--primary-light);
+    color: var(--ink);
+    line-height: 1.55;
+}

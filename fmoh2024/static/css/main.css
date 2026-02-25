@@ -1,0 +1,465 @@
+/* fmoh2024/static/css/main.css */
+/* ── Eyemark Design System ─────────────────────────────────────────────────
+   Colour scheme: Eyemark green — #4baa73 / #2d8a56 / #edf7f1
+   Typography: IBM Plex Sans + IBM Plex Mono
+   All sizes in px — no rem dependencies
+   ───────────────────────────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
+/* ===== RESET & BASE ===== */
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Eyemark Green Palette */
+    --primary-color: #4baa73;
+    --primary-dark: #2d8a56;
+    --primary-light: #edf7f1;
+    --primary-xl: #f5fbf7;
+    
+    /* Neutrals */
+    --ink: #1a1d23;
+    --ink2: #3a3e4a;
+    --ink3: #6b7280;
+    --surface: #ffffff;
+    --bg: #f7f8f9;
+    --bg2: #f0f2f0;
+    --bg3: #e8ebe9;
+    --line: #e2e5e2;
+    
+    /* Accent Colors */
+    --accent-color: #4baa73;
+    --success-color: #4baa73;
+    --warning-color: #b45309;
+    --warning-light: #fef3c7;
+    --danger-color: #b91c1c;
+    --danger-light: #fee2e2;
+    --blue: #1d4ed8;
+    --blue-light: #eff6ff;
+    
+    /* Legacy aliases for compatibility */
+    --secondary-color: #2d8a56;
+    --light-bg: #f7f8f9;
+    --dark-text: #1a1d23;
+    --light-text: #ffffff;
+    --border-color: #e2e5e2;
+    
+    /* Effects */
+    --shadow: 0 1px 3px rgba(0,0,0,.07), 0 4px 12px rgba(0,0,0,.05);
+    --shadow-green: 0 2px 8px rgba(75,170,115,.15);
+    --radius: 6px;
+    --radius-lg: 10px;
+}
+
+body {
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.55;
+    color: var(--ink);
+    background-color: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-size: 15px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* ===== NAVIGATION ===== */
+.navbar {
+    background: var(--surface);
+    color: var(--ink);
+    padding: 0;
+    box-shadow: 0 1px 6px rgba(0,0,0,.07);
+    border-bottom: 3px solid var(--primary-color);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
+.navbar .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 64px;
+}
+
+.nav-brand a {
+    color: var(--ink);
+    text-decoration: none;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: opacity .15s;
+}
+
+.brand-logo {
+    height: 40px; /* Adjust height to match your nav bar */
+    width: auto;
+    display: block;
+}
+
+.nav-brand a:hover {
+    opacity: .75;
+}
+
+.brand-icon {
+    font-size: 24px;
+    color: var(--primary-color);
+}
+
+.nav-menu {
+    display: flex;
+    list-style: none;
+    gap: 4px;
+    padding: 0;
+    margin: 0;
+}
+
+.nav-link {
+    color: var(--ink2);
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    transition: all .15s;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+}
+
+.nav-link:hover {
+    background: var(--primary-light);
+    color: var(--primary-dark);
+}
+
+.fiscal-year-badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+/* ===== FOOTER ===== */
+.footer {
+    background: var(--surface);
+    color: var(--ink2);
+    text-align: center;
+    padding: 20px 0;
+    margin-top: auto;
+    border-top: 1px solid var(--line);
+    font-size: 14px;
+}
+
+/* ===== MAIN CONTENT ===== */
+.main-content {
+    padding: 40px 0;
+    flex: 1;
+}
+
+/* ===== ALERTS / FLASH MESSAGES ===== */
+.flash-messages {
+    margin: 20px auto;
+}
+
+.alert {
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    position: relative;
+    animation: slideDown 0.3s ease-out;
+    font-size: 14px;
+    border-left: 3px solid transparent;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.alert-success {
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    border-left-color: var(--primary-color);
+}
+
+.alert-error {
+    background: var(--danger-light);
+    color: var(--danger-color);
+    border-left-color: var(--danger-color);
+}
+
+.alert-warning {
+    background: var(--warning-light);
+    color: var(--warning-color);
+    border-left-color: var(--warning-color);
+}
+
+.alert-info {
+    background: var(--blue-light);
+    color: var(--blue);
+    border-left-color: var(--blue);
+}
+
+.close {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--ink3);
+    opacity: 0.7;
+    transition: all .15s;
+    line-height: 1;
+    padding: 0 6px;
+}
+
+.close:hover {
+    opacity: 1;
+    color: var(--ink);
+}
+
+/* ===== CARDS ===== */
+.card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--line);
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-green);
+}
+
+.card-header {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 16px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-header h2,
+.card-header h3 {
+    margin: 0;
+    color: var(--primary-dark);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+/* ===== TABLES ===== */
+.table-responsive {
+    overflow-x: auto;
+    border-radius: var(--radius);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+}
+
+th {
+    background: var(--bg2);
+    color: var(--ink3);
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    border-bottom: 1px solid var(--line);
+}
+
+td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+tbody tr:hover {
+    background: var(--primary-light);
+}
+
+/* ===== BUTTONS ===== */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'IBM Plex Sans', sans-serif;
+    transition: all .15s;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+}
+
+.btn-success {
+    background: var(--success-color);
+    color: white;
+}
+
+.btn-success:hover {
+    background: var(--primary-dark);
+}
+
+.btn-warning {
+    background: var(--warning-color);
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #92400e;
+}
+
+.btn-danger {
+    background: var(--danger-color);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #991b1b;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+/* ===== FORMS ===== */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 7px;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--ink3);
+}
+
+.form-control {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    color: var(--ink);
+    background: var(--surface);
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(75,170,115,.12);
+}
+
+/* ===== LOADING STATES ===== */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--bg3);
+    border-radius: 50%;
+    border-top-color: var(--primary-color);
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ===== UTILITY CLASSES ===== */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-left { text-align: left; }
+
+.mt-1 { margin-top: 10px; }
+.mt-2 { margin-top: 20px; }
+.mt-3 { margin-top: 30px; }
+.mb-1 { margin-bottom: 10px; }
+.mb-2 { margin-bottom: 20px; }
+.mb-3 { margin-bottom: 30px; }
+
+.p-1 { padding: 10px; }
+.p-2 { padding: 20px; }
+.p-3 { padding: 30px; }
+
+.hidden { display: none; }
+.visible { display: block; }
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+    .navbar .container {
+        flex-direction: column;
+        gap: 14px;
+        height: auto;
+        padding: 14px 20px;
+    }
+    
+    .nav-menu {
+        flex-direction: column;
+        text-align: center;
+        width: 100%;
+        gap: 4px;
+    }
+    
+    .nav-menu li {
+        width: 100%;
+    }
+    
+    .nav-link {
+        display: block;
+    }
+}
