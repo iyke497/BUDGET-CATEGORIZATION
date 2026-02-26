@@ -1,0 +1,371 @@
+/* fmoh2024/static/css/projects.css */
+
+/* Projects Page Specific Styles */
+.projects-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--line);
+}
+
+.projects-title {
+    margin: 0;
+    color: var(--primary-dark);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.projects-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.fiscal-year-badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.text-muted {
+    color: var(--ink3);
+    font-size: 14px;
+}
+
+/* Filter Bar - Matching Compliance Dashboard */
+.filter-bar {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+    box-shadow: var(--shadow);
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 140px;
+}
+
+.filter-group label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--ink3);
+}
+
+.filter-select, .filter-input {
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    color: var(--ink);
+    background: var(--surface);
+    transition: all .15s;
+    cursor: pointer;
+    height: 38px;
+}
+
+.filter-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px;
+    padding-right: 32px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+.filter-select:hover, .filter-input:hover {
+    border-color: var(--ink3);
+}
+
+.filter-select:focus, .filter-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(75,170,115,.12);
+}
+
+.filter-input::placeholder {
+    color: var(--ink3);
+    opacity: 0.7;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.clear-filters-btn {
+    padding: 8px 16px;
+    background: var(--bg2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--ink2);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.clear-filters-btn:hover {
+    background: var(--bg3);
+    color: var(--ink);
+}
+
+/* Table Card */
+.table-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--line);
+    overflow: hidden;
+}
+
+/* DataTables Customization */
+.dataTables_wrapper {
+    padding: 20px;
+}
+
+.dataTables_length,
+.dataTables_filter,
+.dataTables_info,
+.dataTables_paginate {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    color: var(--ink2);
+    margin-bottom: 16px;
+}
+
+.dataTables_length select,
+.dataTables_filter input {
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--surface);
+    margin: 0 4px;
+}
+
+.dataTables_filter input {
+    width: 250px;
+    padding-left: 32px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: left 8px center;
+    background-size: 16px;
+}
+
+.dataTables_filter input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(75,170,115,.12);
+}
+
+/* Table Styling */
+#projects-table {
+    margin-top: 0 !important;
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100% !important;
+}
+
+#projects-table thead tr:first-child th {
+    background: var(--bg2);
+    color: var(--ink3);
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 14px 12px;
+    border-bottom: 2px solid var(--line);
+}
+
+#projects-table tbody td {
+    padding: 16px 12px;
+    color: var(--ink);
+    font-size: 14px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+}
+
+#projects-table tbody tr:hover {
+    background: var(--primary-light);
+}
+
+#projects-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Code Column Styling */
+.code-cell {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--primary-dark);
+    margin-bottom: 4px;
+}
+
+.appropriation-amount {
+    font-size: 11px;
+    color: var(--ink3);
+    font-family: 'IBM Plex Mono', monospace;
+    white-space: nowrap;
+}
+
+/* Badge Styling for Enums */
+.service-badge, .outcome-badge, .category-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--primary-xl);
+    color: var(--primary-dark);
+}
+
+.service-badge.primary { background: #e3f2fd; color: #0d47a1; }
+.service-badge.secondary { background: #fff3e0; color: #b45309; }
+.service-badge.tertiary { background: #f3e5f5; color: #6b21a8; }
+
+.outcome-badge.equity { background: #e8f5e9; color: #2e7d32; }
+.outcome-badge.quality { background: #e3f2fd; color: #1565c0; }
+.outcome-badge.utilization { background: #fff3e0; color: #b45309; }
+.outcome-badge.financial_risk { background: #ffebee; color: #b71c1c; }
+
+.category-badge.fixed_assets { background: #e8eaf6; color: #1e3a8a; }
+.category-badge.infrastructure { background: #e0f2f1; color: #00695c; }
+.category-badge.renovation_repairs { background: #fff3e0; color: #b45309; }
+.category-badge.programs { background: #f3e5f5; color: #6b21a8; }
+.category-badge.others { background: #f5f5f5; color: #616161; }
+
+/* Pagination */
+.dataTables_paginate {
+    margin-top: 20px;
+    text-align: right;
+}
+
+.dataTables_paginate .paginate_button {
+    padding: 8px 14px;
+    margin: 0 2px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--ink2);
+    cursor: pointer;
+    transition: all .15s;
+    font-size: 13px;
+}
+
+.dataTables_paginate .paginate_button:hover {
+    background: var(--primary-light);
+    border-color: var(--primary-color);
+    color: var(--primary-dark);
+}
+
+.dataTables_paginate .paginate_button.current {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.dataTables_paginate .paginate_button.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Processing Overlay */
+.dataTables_processing {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px 30px;
+    box-shadow: var(--shadow);
+    color: var(--ink2);
+    font-family: 'IBM Plex Sans', sans-serif;
+}
+
+/* Empty State */
+.dataTables_empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--ink3);
+    font-style: italic;
+}
+
+/* Sorting Icons */
+table.dataTable thead .sorting,
+table.dataTable thead .sorting_asc,
+table.dataTable thead .sorting_desc {
+    background-image: none;
+    position: relative;
+    cursor: pointer;
+}
+
+table.dataTable thead .sorting:after,
+table.dataTable thead .sorting_asc:after,
+table.dataTable thead .sorting_desc:after {
+    font-family: 'IBM Plex Sans', sans-serif;
+    margin-left: 8px;
+    opacity: 0.5;
+    display: inline-block;
+}
+
+table.dataTable thead .sorting:after {
+    content: '⇅';
+    opacity: 0.3;
+}
+
+table.dataTable thead .sorting_asc:after {
+    content: '↑';
+    opacity: 1;
+    color: var(--primary-color);
+}
+
+table.dataTable thead .sorting_desc:after {
+    content: '↓';
+    opacity: 1;
+    color: var(--primary-color);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-group {
+        width: 100%;
+    }
+    
+    .filter-actions {
+        margin-left: 0;
+        margin-top: 8px;
+    }
+    
+    .dataTables_filter input {
+        width: 100%;
+    }
+}
