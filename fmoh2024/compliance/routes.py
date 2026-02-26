@@ -1,6 +1,7 @@
 # fmoh2024/compliance/routes.py
 from flask import jsonify, render_template, request
 from sqlalchemy import case, func
+from fmoh2024.extensions import cache
 
 from fmoh2024.compliance import bp
 from fmoh2024.compliance.services import ComplianceService
@@ -277,6 +278,7 @@ def api_service_level_breakdown():
 
 
 @bp.route("/api/dashboard-stats")
+@cache.cached(timeout=300, query_string=True)
 def api_dashboard_stats():
     """Consolidated API endpoint for all dashboard statistics"""
     fiscal_year = request.args.get("fiscal_year", "2024")

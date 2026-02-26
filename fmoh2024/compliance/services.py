@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import case, func
 
-from fmoh2024.extensions import db
+from fmoh2024.extensions import db, cache
 from fmoh2024.models import MinistryAgency, Project, SurveyResponse
 
 
@@ -66,6 +66,7 @@ class ComplianceService:
         }
 
     @classmethod
+    @cache.memoize(timeout=300)
     def get_all_compliance_stats(cls, fiscal_year="2024"):
         """
         Get compliance statistics for all focus agencies.
@@ -85,6 +86,7 @@ class ComplianceService:
         return compliance_data
 
     @classmethod
+    @cache.memoize(timeout=300)
     def get_summary_stats(cls, fiscal_year="2024"):
         """Get overall compliance summary statistics."""
         agencies = cls.get_focus_agencies(fiscal_year)
