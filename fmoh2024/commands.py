@@ -521,8 +521,21 @@ def parse_enum_field(value, enum_class):
     
     try:
         # Use the enum's _missing_ method which handles partial matches
-        return enum_class(str_value)
+        result = enum_class(str_value)
+        
+        # If result is None but we have a value, try to map to OTHER
+        if result is None and hasattr(enum_class, 'OTHER'):
+            return enum_class.OTHER
+        elif result is None and hasattr(enum_class, 'OTHERS'):
+            return enum_class.OTHERS
+            
+        return result
     except (ValueError, KeyError):
+        # If enum doesn't have _missing_ or it fails, try to map to OTHER/OTHERS
+        if hasattr(enum_class, 'OTHER'):
+            return enum_class.OTHER
+        elif hasattr(enum_class, 'OTHERS'):
+            return enum_class.OTHERS
         return None
 
 

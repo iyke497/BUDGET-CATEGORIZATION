@@ -125,6 +125,7 @@ class TertiaryHealthService(str, Enum):
     ICT_DIGITAL_HEALTH = "ICT_DIGITAL_HEALTH"
     ICU_NICU = "ICU_NICU"
     EMERGENCY_TRAUMA = "EMERGENCY_TRAUMA"
+    OTHER = "OTHER"
     
     @classmethod
     def _missing_(cls, value):
@@ -154,6 +155,10 @@ class TertiaryHealthService(str, Enum):
         for key, enum_value in mapping.items():
             if key in value_upper:
                 return enum_value
+            
+        # If no match found, return OTHER
+        if value and value_upper not in ['NAN', 'NONE', 'NULL', '']:
+            return cls.OTHER
                 
         return None
     
@@ -171,6 +176,7 @@ class TertiaryHealthService(str, Enum):
             cls.ICT_DIGITAL_HEALTH: "ICT / DIGITAL HEALTH SYSTEMS (IF YOU WANT THAT TRACKED DISTINCTLY)",
             cls.ICU_NICU: "ICU / NICU (ADULT AND NEONATAL INTENSIVE CARE SERVICES)",
             cls.EMERGENCY_TRAUMA: "EMERGENCY AND TRAUMA CARE",
+            cls.OTHER: "OTHER (Services not in predefined categories)",
         }
         return display_map.get(enum_value, enum_value.value)
 
@@ -183,6 +189,7 @@ class PrimaryHealthService(str, Enum):
     NUTRITION = "NUTRITION"
     MALARIA = "MALARIA"
     FAMILY_PLANNING = "FAMILY_PLANNING"
+    OTHER = "OTHER"
     
     @classmethod
     def _missing_(cls, value):
@@ -210,6 +217,10 @@ class PrimaryHealthService(str, Enum):
         for key, enum_value in mapping.items():
             if key in value_upper:
                 return enum_value
+            
+        # If no match found, return OTHER
+        if value and value_upper not in ['NAN', 'NONE', 'NULL', '']:
+            return cls.OTHER
         
         return None
     
@@ -222,6 +233,7 @@ class PrimaryHealthService(str, Enum):
             cls.NUTRITION: "NUTRITION",
             cls.MALARIA: "MALARIA",
             cls.FAMILY_PLANNING: "FAMILY PLANNING",
+            cls.OTHER: "OTHER (Services not in predefined categories)"
         }
         return display_map.get(enum_value, enum_value.value)
 
@@ -234,6 +246,7 @@ class SecondaryHealthService(str, Enum):
     NUTRITION = "NUTRITION"
     MALARIA = "MALARIA"
     FAMILY_PLANNING = "FAMILY_PLANNING"
+    OTHER = "OTHER"
     
     @classmethod
     def _missing_(cls, value):
@@ -261,6 +274,10 @@ class SecondaryHealthService(str, Enum):
         for key, enum_value in mapping.items():
             if key in value_upper:
                 return enum_value
+            
+        # If no match found, return OTHER
+        if value and value_upper not in ['NAN', 'NONE', 'NULL', '']:
+            return cls.OTHER
         
         return None
     
@@ -273,6 +290,7 @@ class SecondaryHealthService(str, Enum):
             cls.NUTRITION: "NUTRITION",
             cls.MALARIA: "MALARIA",
             cls.FAMILY_PLANNING: "FAMILY PLANNING",
+            cls.OTHER: "OTHER (Services not in predefined categories)"
         }
         return display_map.get(enum_value, enum_value.value)
 
