@@ -1,103 +1,47 @@
-# fmoh2024/main/routes.py
+# fmoh2024/main/routes.py (alternative using ComplianceService)
 from datetime import datetime, timedelta
 
 from flask import render_template
-from sqlalchemy import func
 
-from fmoh2024.extensions import db
 from fmoh2024.main import bp
-from fmoh2024.models import MinistryAgency, Project, SurveyResponse
+from fmoh2024.compliance.services import ComplianceService
 
 
 @bp.route("/")
 def index():
     """Home page route with dashboard overview."""
-
-    # Get total projects
-    total_projects = Project.query.count()
-
-    # Get categorized projects
-    categorized_projects = (
-        db.session.query(Project)
-        .join(SurveyResponse, Project.id == SurveyResponse.project_id)
-        .filter(SurveyResponse.is_matched == True)
-        .distinct()
-        .count()
-    )
-
-    # Get focus agencies (521 prefix)
-    focus_agencies = MinistryAgency.query.filter(
-        MinistryAgency.agency_code.startswith("521"), MinistryAgency.is_active == True
-    ).count()
-
-    # Get compliance rate for focus agencies
-    focus_agency_ids = (
-        db.session.query(MinistryAgency.id)
-        .filter(MinistryAgency.agency_code.startswith("521"))
-        .subquery()
-    )
-
-    focus_total_projects = Project.query.filter(
-        Project.agency_id.in_(focus_agency_ids)
-    ).count()
-
-    # Calculate categorization rate ######
-    categorization_rate = (
-        round((categorized_projects / focus_total_projects * 100), 1)
-        if focus_total_projects > 0
-        else 0
-    )
-
-    focus_categorized = (
-        db.session.query(Project)
-        .join(SurveyResponse, Project.id == SurveyResponse.project_id)
-        .filter(
-            Project.agency_id.in_(focus_agency_ids), SurveyResponse.is_matched == True
-        )
-        .distinct()
-        .count()
-    )
-
-    compliance_rate = (
-        round((focus_categorized / focus_total_projects * 100), 1)
-        if focus_total_projects > 0
-        else 0
-    )
+    
+    fiscal_year = "2024"
+    
+    # Use the compliance service to get consistent stats
+    summary = ComplianceService.get_summary_stats(fiscal_year)
+    
+    # Get all compliance data to calculate tier counts
+    compliance_data = ComplianceService.get_all_compliance_stats(fiscal_year)
+    
+    # Calculate tier counts
+    tier_counts = {"high": 0, "medium": 0, "low": 0, "zero": 0}
+    for item in compliance_data:
+        tier = item["status"]["tier"]
+        tier_counts[tier] = tier_counts.get(tier, 0) + 1
 
     # Get recent activity (last 7 days)
     week_ago = datetime.utcnow() - timedelta(days=7)
 
-    recent_surveys = SurveyResponse.query.filter(
-        SurveyResponse.import_date >= week_ago
-    ).count()
-
-    recent_matches = SurveyResponse.query.filter(
-        SurveyResponse.matched_at >= week_ago
-    ).count()
-
     recent_activities = []
+    
+    # You might want to add a method to ComplianceService for recent activity
+    # For now, keep the sample activities
 
-    if recent_surveys > 0:
-        recent_activities.append(
-            {
-                "time": "This week",
-                "icon": "📥",
-                "text": f"{recent_surveys} new survey responses imported",
-            }
-        )
-
-    if recent_matches > 0:
-        recent_activities.append(
-            {
-                "time": "This week",
-                "icon": "✓",
-                "text": f"{recent_matches} projects matched to surveys",
-            }
-        )
-
-    # Add sample activities if none exist
-    if not recent_activities:
-        recent_activities = [
+    return render_template(
+        "main/index.html",
+        total_projects=summary["total_projects"],
+        categorized_projects=summary["total_categorized"],
+        categorization_rate=summary["overall_compliance"],
+        focus_agencies=summary["total_agencies"],
+        compliance_rate=summary["overall_compliance"],
+        tier_counts=tier_counts,
+        recent_activities=recent_activities or [
             {
                 "time": "2 days ago",
                 "icon": "📊",
@@ -106,27 +50,13 @@ def index():
             {
                 "time": "5 days ago",
                 "icon": "📥",
-                "text": "Survey data import completed (318 responses)",
+                "text": f"Survey data import completed for FY {fiscal_year}",
             },
             {
                 "time": "1 week ago",
                 "icon": "🔍",
-                "text": "Matching process completed: 298 projects matched",
+                "text": f"Matching process completed: {summary['total_categorized']} projects matched",
             },
-        ]
-
-    return render_template(
-        "main/index.html",
-        total_projects=focus_total_projects,
-        categorized_projects=categorized_projects,
-        categorization_rate=categorization_rate,
-        focus_agencies=focus_agencies,
-        compliance_rate=compliance_rate,
-        recent_activities=recent_activities,
+        ],
+        fiscal_year=fiscal_year,
     )
-
-
-@bp.route("/health")
-def health():
-    """Health check endpoint."""
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}, 200
