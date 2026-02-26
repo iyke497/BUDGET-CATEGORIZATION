@@ -32,6 +32,10 @@ dev = [
 [tool.setuptools.package-data]
 "*" = ["**/static/**/*", "**/templates/**/*"]
 
+[tool.setuptools.packages.find]
+include = ["fmoh2024*"]  # Only include the main project folder
+exclude = ["migrations*", "tests*"] # Explicitly ignore the rest
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
