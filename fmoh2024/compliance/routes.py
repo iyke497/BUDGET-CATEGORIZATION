@@ -5,7 +5,7 @@ from sqlalchemy import case, func
 from fmoh2024.compliance import bp
 from fmoh2024.compliance.services import ComplianceService
 from fmoh2024.extensions import db
-from fmoh2024.models import SurveyResponse
+from fmoh2024.models import SurveyResponse, IntermediateOutcome, BudgetCategory, HealthCareService, SecondaryHealthService, TertiaryHealthService, PrimaryHealthService
 
 
 @bp.route("/")
@@ -307,10 +307,12 @@ def api_dashboard_stats():
     outcome_labels = []
     outcome_values = []
     for outcome, count in outcomes:
-        clean_outcome = str(outcome).strip()
-        # Split at '(' and take text before it
-        label = clean_outcome.split("(")[0].strip()
-        outcome_labels.append(label)
+        # Use the enum's display method
+        display_value = IntermediateOutcome.get_display_value(outcome)
+        # Extract just the readable part (before the parenthesis)
+        if '(' in display_value:
+            display_value = display_value.split('(')[0].strip()
+        outcome_labels.append(display_value)
         outcome_values.append(count)
 
     # Get category distribution
@@ -320,7 +322,6 @@ def api_dashboard_stats():
             SurveyResponse.fiscal_year == fiscal_year,
             SurveyResponse.is_matched == True,
             SurveyResponse.category.isnot(None),
-            SurveyResponse.category != "",
         )
         .group_by(SurveyResponse.category)
         .order_by(func.count().desc())
@@ -331,10 +332,12 @@ def api_dashboard_stats():
     category_labels = []
     category_values = []
     for category, count in categories:
-        clean_category = str(category).strip()
-        # Split at '(' and take text before it
-        label = clean_category.split("(")[0].strip()
-        category_labels.append(label)
+        # Use the enum's display method
+        display_value = BudgetCategory.get_display_value(category)
+        # Extract just the readable part (before the parenthesis)
+        if '(' in display_value:
+            display_value = display_value.split('(')[0].strip()
+        category_labels.append(display_value)
         category_values.append(count)
 
     # Get healthcare service distribution
@@ -346,7 +349,6 @@ def api_dashboard_stats():
             SurveyResponse.fiscal_year == fiscal_year,
             SurveyResponse.is_matched == True,
             SurveyResponse.health_care_service.isnot(None),
-            SurveyResponse.health_care_service != "",
         )
         .group_by(SurveyResponse.health_care_service)
         .order_by(func.count().desc())
@@ -357,10 +359,9 @@ def api_dashboard_stats():
     service_labels = []
     service_values = []
     for service, count in services:
-        clean_service = str(service).strip()
-        if len(clean_service) > 30:
-            clean_service = clean_service[:30] + "..."
-        service_labels.append(clean_service)
+        # Use the enum's display method
+        display_value = HealthCareService.get_display_value(service)
+        service_labels.append(display_value)
         service_values.append(count)
 
     # Calculate tier distribution for compliance chart
