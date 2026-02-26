@@ -6,7 +6,7 @@ from fmoh2024.commands import register_commands
 from fmoh2024.compliance import bp as compliance_bp
 from fmoh2024.projects import bp as projects_bp
 from fmoh2024.config import config
-from fmoh2024.extensions import db, migrate
+from fmoh2024.extensions import db, migrate, enable_wal_mode
 from fmoh2024.logging import init_logging
 from fmoh2024.main import bp as main_bp
 
@@ -23,6 +23,11 @@ def create_app(config_name=None):
     # Initialize extensions with the app
     db.init_app(app)
     migrate.init_app(app, db)
+
+    # Enable WAL mode for SQLite
+    with app.app_context():
+        if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']:
+            enable_wal_mode()
 
     # Register CLI commands
     register_commands(app)
