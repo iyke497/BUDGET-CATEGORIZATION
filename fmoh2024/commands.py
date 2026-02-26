@@ -11,7 +11,7 @@ import requests
 from flask.cli import with_appcontext
 
 from fmoh2024.extensions import db
-from fmoh2024.models import MinistryAgency, Project, SurveyResponse
+from fmoh2024.models import MinistryAgency, Project, SurveyResponse, IntermediateOutcome, BudgetCategory, HealthCareService, PrimaryHealthService, SecondaryHealthService, TertiaryHealthService
 
 logger = logging.getLogger(__name__)
 
@@ -504,10 +504,33 @@ def fetch_survey_data_command(
         return
 
 
+def parse_enum_field(value, enum_class):
+    """
+    Parse a value into an enum using the enum's _missing_ method.
+    Returns None if value is invalid or empty.
+    """
+    if pd.isna(value) or value is None:
+        return None
+    
+    # Convert to string and clean
+    str_value = str(value).strip()
+    
+    # Handle 'nan' strings from pandas
+    if str_value.lower() == 'nan' or str_value == '':
+        return None
+    
+    try:
+        # Use the enum's _missing_ method which handles partial matches
+        return enum_class(str_value)
+    except (ValueError, KeyError):
+        return None
+
+
 def import_survey_excel(file_path, fiscal_year, batch_id):
     """
     Import survey data from Excel file into SurveyResponse table.
     Uses upsert logic to avoid duplicates.
+    Properly parses enum fields and handles NULL constraints.
     """
     click.echo(f"\n📊 Importing survey data from Excel...")
 
@@ -520,8 +543,23 @@ def import_survey_excel(file_path, fiscal_year, batch_id):
         df.columns = [str(col).strip() for col in df.columns]
         click.echo(f"📋 Columns found: {', '.join(df.columns)}")
 
-        # Track statistics
-        stats = {"created": 0, "updated": 0, "skipped": 0, "errors": 0}
+        # Track statistics including enum parsing
+        stats = {
+            "created": 0, 
+            "updated": 0, 
+            "skipped": 0, 
+            "errors": 0,
+            "enum_parsing": {
+                "intermediate_outcome": 0,
+                "category": 0,
+                "health_care_service": 0,
+                "primary": 0,
+                "secondary": 0,
+                "tertiary": 0,
+            }
+        }
+
+        click.echo("\n📊 Processing survey responses...")
 
         for idx, row in df.iterrows():
             try:
@@ -535,48 +573,93 @@ def import_survey_excel(file_path, fiscal_year, batch_id):
                     stats["skipped"] += 1
                     continue
 
+                # Parse ALL enum fields using the _missing_ method
+                intermediate_outcome = parse_enum_field(
+                    row.get("WHAT INTERMEDIATE OUTCOME DOES THIS BUDGET/PROJECT SPEAK TO", ""),
+                    IntermediateOutcome
+                )
+                if intermediate_outcome:
+                    stats["enum_parsing"]["intermediate_outcome"] += 1
+
+                category = parse_enum_field(
+                    row.get("CATEGORY", ""),
+                    BudgetCategory
+                )
+                if category:
+                    stats["enum_parsing"]["category"] += 1
+
+                health_care_service = parse_enum_field(
+                    row.get("HEALTH CARE SERVICE", ""),
+                    HealthCareService
+                )
+                if health_care_service:
+                    stats["enum_parsing"]["health_care_service"] += 1
+
+                # Parse primary/secondary/tertiary based on health_care_service
+                primary = parse_enum_field(
+                    row.get("PRIMARY HEALTH CARE SERVICES", ""),
+                    PrimaryHealthService
+                )
+                if primary:
+                    stats["enum_parsing"]["primary"] += 1
+                
+                secondary = parse_enum_field(
+                    row.get("SECONDARY HEALTH CARE SERVICES", ""),
+                    SecondaryHealthService
+                )
+                if secondary:
+                    stats["enum_parsing"]["secondary"] += 1
+                
+                tertiary = parse_enum_field(
+                    row.get("TERTIARY HEALTH CARE SERVICES", ""),
+                    TertiaryHealthService
+                )
+                if tertiary:
+                    stats["enum_parsing"]["tertiary"] += 1
+
                 # Clean appropriation value
                 appropriation = clean_numeric(row.get("What is the Appropriation"))
 
-                # Check if response already exists
-                existing = SurveyResponse.query.filter_by(
-                    budget_line=budget_line,
-                    mda=str(row.get("What is the MDA", "")).strip(),
-                    fiscal_year=fiscal_year,
-                ).first()
+                # Get MDA and validate it's not null
+                mda = str(row.get("What is the MDA", "")).strip()
+                if mda.lower() == 'nan':
+                    mda = None
+
+                # ✅ FIX: Skip records with NULL MDA to prevent constraint violations
+                if not mda:
+                    click.echo(f"⚠️  Skipping row {idx + 3}: Missing required field 'MDA'")
+                    stats["skipped"] += 1
+                    continue
+
+                # Check if response already exists (using no_autoflush to prevent premature flush)
+                with db.session.no_autoflush:
+                    existing = SurveyResponse.query.filter_by(
+                        budget_line=budget_line,
+                        mda=mda,
+                        fiscal_year=fiscal_year,
+                    ).first()
 
                 if existing:
                     # Update existing record with new data
                     existing.responder = str(row.get("Responder", "")).strip()
                     existing.appropriation = appropriation
-                    existing.intermediate_outcome = str(
-                        row.get(
-                            "WHAT INTERMEDIATE OUTCOME DOES THIS BUDGET/PROJECT SPEAK TO",
-                            "",
-                        )
-                    ).strip()
-                    existing.category = str(row.get("CATEGORY", "")).strip()
-                    existing.health_care_service = str(
-                        row.get("HEALTH CARE SERVICE", "")
-                    ).strip()
-                    existing.primary_health_care = str(
-                        row.get("PRIMARY HEALTH CARE SERVICES", "")
-                    ).strip()
-                    existing.secondary_health_care = str(
-                        row.get("SECONDARY HEALTH CARE SERVICES", "")
-                    ).strip()
-                    existing.tertiary_health_care = str(
-                        row.get("TERTIARY HEALTH CARE SERVICES", "")
-                    ).strip()
-                    existing.import_batch = batch_id  # Update batch to latest
+                    existing.intermediate_outcome = intermediate_outcome
+                    existing.category = category
+                    existing.health_care_service = health_care_service
+                    existing.primary_health_care = primary
+                    existing.secondary_health_care = secondary
+                    existing.tertiary_health_care = tertiary
+                    existing.import_batch = batch_id
+                    existing.updated_at = datetime.utcnow()
+
+                    # Re-extract ERGP code in case budget_line changed
                     existing.extracted_ergp_code = SurveyResponse.extract_ergp_code(
                         budget_line
                     )
-                    existing.updated_at = datetime.utcnow()
 
-                    # If it was previously matched, maybe we need to re-evaluate?
+                    # If it was previously matched, reset match status for re-evaluation
                     if existing.is_matched:
-                        existing.is_matched = False  # Force re-match? Or keep?
+                        existing.is_matched = False
                         existing.matched_at = None
 
                     stats["updated"] += 1
@@ -585,47 +668,46 @@ def import_survey_excel(file_path, fiscal_year, batch_id):
                     response = SurveyResponse(
                         responder=str(row.get("Responder", "")).strip(),
                         budget_line=budget_line,
-                        mda=str(row.get("What is the MDA", "")).strip(),
+                        mda=mda,
                         appropriation=appropriation,
-                        intermediate_outcome=str(
-                            row.get(
-                                "WHAT INTERMEDIATE OUTCOME DOES THIS BUDGET/PROJECT SPEAK TO",
-                                "",
-                            )
-                        ).strip(),
-                        category=str(row.get("CATEGORY", "")).strip(),
-                        health_care_service=str(
-                            row.get("HEALTH CARE SERVICE", "")
-                        ).strip(),
-                        primary_health_care=str(
-                            row.get("PRIMARY HEALTH CARE SERVICES", "")
-                        ).strip(),
-                        secondary_health_care=str(
-                            row.get("SECONDARY HEALTH CARE SERVICES", "")
-                        ).strip(),
-                        tertiary_health_care=str(
-                            row.get("TERTIARY HEALTH CARE SERVICES", "")
-                        ).strip(),
+                        intermediate_outcome=intermediate_outcome,
+                        category=category,
+                        health_care_service=health_care_service,
+                        primary_health_care=primary,
+                        secondary_health_care=secondary,
+                        tertiary_health_care=tertiary,
                         fiscal_year=fiscal_year,
                         import_batch=batch_id,
                     )
                     db.session.add(response)
                     stats["created"] += 1
 
-                # Commit every 100 records
-                if (stats["created"] + stats["updated"]) % 100 == 0:
-                    db.session.commit()
-                    click.echo(
-                        f"  ⏳ Processed {stats['created'] + stats['updated']} responses..."
-                    )
+                # ✅ FIX: Commit every 50 records to minimize data loss on errors
+                if (stats["created"] + stats["updated"]) % 50 == 0:
+                    try:
+                        db.session.commit()
+                        click.echo(
+                            f"  ⏳ Processed {stats['created'] + stats['updated']} responses..."
+                        )
+                    except Exception as commit_error:
+                        click.echo(f"⚠️  Commit error at batch {stats['created'] + stats['updated']}: {commit_error}", err=True)
+                        db.session.rollback()
+                        stats["errors"] += 1
 
             except Exception as e:
                 click.echo(f"⚠️  Error at row {idx + 3}: {e}", err=True)
                 stats["errors"] += 1
-                db.session.rollback()
+                # Don't rollback - just skip this record and continue
+                continue
 
-        # Final commit
-        db.session.commit()
+        # ✅ FIX: CRITICAL - Final commit to save any remaining records
+        try:
+            db.session.commit()
+            click.echo(f"  ✅ Final commit: saved {stats['created'] + stats['updated']} total responses")
+        except Exception as e:
+            click.echo(f"❌ Final commit failed: {e}", err=True)
+            db.session.rollback()
+            raise
 
         # Show summary
         click.echo("\n" + "=" * 50)
@@ -635,6 +717,14 @@ def import_survey_excel(file_path, fiscal_year, batch_id):
         click.echo(f"🔄 Updated: {stats['updated']}")
         click.echo(f"⏭️  Skipped: {stats['skipped']}")
         click.echo(f"⚠️  Errors: {stats['errors']}")
+        
+        click.echo("\n🔍 ENUM PARSING STATISTICS:")
+        click.echo(f"   Intermediate Outcome: {stats['enum_parsing']['intermediate_outcome']}")
+        click.echo(f"   Budget Category: {stats['enum_parsing']['category']}")
+        click.echo(f"   Health Care Service: {stats['enum_parsing']['health_care_service']}")
+        click.echo(f"   Primary Services: {stats['enum_parsing']['primary']}")
+        click.echo(f"   Secondary Services: {stats['enum_parsing']['secondary']}")
+        click.echo(f"   Tertiary Services: {stats['enum_parsing']['tertiary']}")
 
         # Show ERGP extraction stats
         total_processed = stats["created"] + stats["updated"]
@@ -652,7 +742,6 @@ def import_survey_excel(file_path, fiscal_year, batch_id):
         click.echo(f"❌ Failed to import Excel: {e}", err=True)
         db.session.rollback()
         raise
-
 
 def clean_numeric(value):
     """Clean numeric values from Excel."""

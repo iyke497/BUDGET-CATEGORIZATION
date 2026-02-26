@@ -1,8 +1,280 @@
 # fmoh2024/models.py
+from enum import Enum
 import re
 from datetime import datetime
 
 from fmoh2024.extensions import db
+
+class IntermediateOutcome(str, Enum):
+    """WHO Health System Building Blocks / Intermediate Outcomes"""
+    EQUITY = "EQUITY"
+    QUALITY = "QUALITY"
+    UTILIZATION = "UTILIZATION"
+    FINANCIAL_RISK = "FINANCIAL_RISK"
+    
+    @classmethod
+    def _missing_(cls, value):
+        """Handle case-insensitive lookup and extract from full text"""
+        if not value or not isinstance(value, str):
+            return None
+            
+        value_upper = value.upper()
+        
+        # Extract from full text like "QUALITY (Ensuring that services...)"
+        for member in cls:
+            if member.value in value_upper:
+                return member
+        
+        # Try direct match
+        for member in cls:
+            if member.value == value_upper:
+                return member
+                
+        return None
+    
+    @classmethod
+    def get_display_value(cls, enum_value):
+        """Get the full display text for an enum value"""
+        display_map = {
+            cls.EQUITY: "EQUITY (Ensuring that everyone who needs services gets them, not only those who can pay for them)",
+            cls.QUALITY: "QUALITY (Ensuring that services are good enough to improve the health of those receiving them)",
+            cls.UTILIZATION: "UTILIZATION (Realizing improved uptake of health care services relative to need)",
+            cls.FINANCIAL_RISK: "FINANCIAL RISK (Ensuring that the cost of using services does not put people at risk of financial harm)",
+        }
+        return display_map.get(enum_value, enum_value.value)
+
+
+class BudgetCategory(str, Enum):
+    """Budget categorization options"""
+    FIXED_ASSETS = "FIXED_ASSETS"
+    INFRASTRUCTURE = "INFRASTRUCTURE"
+    RENOVATION_REPAIRS = "RENOVATION_REPAIRS"
+    PROGRAMS = "PROGRAMS"
+    OTHERS = "OTHERS"
+    
+    @classmethod
+    def _missing_(cls, value):
+        if not value or not isinstance(value, str):
+            return None
+            
+        value_upper = value.upper()
+        
+        # Extract from full text
+        if "FIXED ASSETS" in value_upper:
+            return cls.FIXED_ASSETS
+        if "INFRASTRUCTURE" in value_upper:
+            return cls.INFRASTRUCTURE
+        if "RENOVATION" in value_upper and "REPAIRS" in value_upper:
+            return cls.RENOVATION_REPAIRS
+        if "PROGRAMS" in value_upper:
+            return cls.PROGRAMS
+        if "OTHERS" in value_upper:
+            return cls.OTHERS
+            
+        return None
+    
+    @classmethod
+    def get_display_value(cls, enum_value):
+        display_map = {
+            cls.FIXED_ASSETS: "FIXED ASSETS (Purchase of Vehicles, Computers, Equipment, Generator, Medical Equipments)",
+            cls.INFRASTRUCTURE: "INFRASTRUCTURE (Construction of Hospitals, Health Centres, Secreteriats)",
+            cls.RENOVATION_REPAIRS: "RENOVATION & REPAIRS (Repair of Hispitals, Health Centres)",
+            cls.PROGRAMS: "PROGRAMS (Departmental Activities)",
+            cls.OTHERS: "OTHERS (Non Tangible Assets, R&D, Anniversaries Celebrations)",
+        }
+        return display_map.get(enum_value, enum_value.value)
+
+
+class HealthCareService(str, Enum):
+    """Level of health care service"""
+    PRIMARY = "PRIMARY"
+    SECONDARY = "SECONDARY"
+    TERTIARY = "TERTIARY"
+    
+    @classmethod
+    def _missing_(cls, value):
+        if not value or not isinstance(value, str):
+            return None
+            
+        value_upper = value.upper()
+        
+        if "PRIMARY" in value_upper:
+            return cls.PRIMARY
+        if "SECONDARY" in value_upper:
+            return cls.SECONDARY
+        if "TERTIARY" in value_upper:
+            return cls.TERTIARY
+            
+        return None
+    
+    @classmethod
+    def get_display_value(cls, enum_value):
+        return f"{enum_value.value} HEALTH CARE SERVICE"
+
+
+class TertiaryHealthService(str, Enum):
+    """Tertiary health care service types"""
+    SPECIALISED_CLINICAL_SERVICES = "SPECIALISED_CLINICAL_SERVICES"
+    ADVANCED_DIAGNOSTIC_INFRASTRUCTURE = "ADVANCED_DIAGNOSTIC_INFRASTRUCTURE"
+    MANAGEMENT_RARE_COMPLEX = "MANAGEMENT_RARE_COMPLEX"
+    MEDICAL_EDUCATION_RESEARCH = "MEDICAL_EDUCATION_RESEARCH"
+    SPECIALISED_SURGICAL = "SPECIALISED_SURGICAL"
+    GENERAL_SPECIALIST_CLINICAL = "GENERAL_SPECIALIST_CLINICAL"
+    LABORATORY_PATHOLOGY = "LABORATORY_PATHOLOGY"
+    HOSPITAL_INFRASTRUCTURE = "HOSPITAL_INFRASTRUCTURE"
+    ICT_DIGITAL_HEALTH = "ICT_DIGITAL_HEALTH"
+    ICU_NICU = "ICU_NICU"
+    EMERGENCY_TRAUMA = "EMERGENCY_TRAUMA"
+    
+    @classmethod
+    def _missing_(cls, value):
+        if not value or not isinstance(value, str):
+            return None
+            
+        value_upper = value.upper()
+        
+        mapping = {
+            "SPECIALISED CLINICAL SERVICES": cls.SPECIALISED_CLINICAL_SERVICES,
+            "ADVANCED DIAGNOSTIC": cls.ADVANCED_DIAGNOSTIC_INFRASTRUCTURE,
+            "RARE AND COMPLEX": cls.MANAGEMENT_RARE_COMPLEX,
+            "MEDICAL EDUCATION": cls.MEDICAL_EDUCATION_RESEARCH,
+            "SPECIALISED SURGICAL": cls.SPECIALISED_SURGICAL,
+            "GENERAL SPECIALIST": cls.GENERAL_SPECIALIST_CLINICAL,
+            "LABORATORY": cls.LABORATORY_PATHOLOGY,
+            "PATHOLOGY": cls.LABORATORY_PATHOLOGY,
+            "HOSPITAL INFRASTRUCTURE": cls.HOSPITAL_INFRASTRUCTURE,
+            "ICT": cls.ICT_DIGITAL_HEALTH,
+            "DIGITAL HEALTH": cls.ICT_DIGITAL_HEALTH,
+            "ICU": cls.ICU_NICU,
+            "NICU": cls.ICU_NICU,
+            "EMERGENCY": cls.EMERGENCY_TRAUMA,
+            "TRAUMA": cls.EMERGENCY_TRAUMA,
+        }
+        
+        for key, enum_value in mapping.items():
+            if key in value_upper:
+                return enum_value
+                
+        return None
+    
+    @classmethod
+    def get_display_value(cls, enum_value):
+        display_map = {
+            cls.SPECIALISED_CLINICAL_SERVICES: "SPECIALISED CLINICAL SERVICES (ONCOLOGY, NEPHROLOGY, NEURO-SURGERY)",
+            cls.ADVANCED_DIAGNOSTIC_INFRASTRUCTURE: "ADVANCED DIAGNOSTIC AND TREATMENT INFRASTRUCTURE",
+            cls.MANAGEMENT_RARE_COMPLEX: "MANAGEMENT OF RARE AND COMPLEX DISEASE",
+            cls.MEDICAL_EDUCATION_RESEARCH: "MEDICAL EDUCATION, RESEARCH AND SPECIALIST TRAINING",
+            cls.SPECIALISED_SURGICAL: "SPECIALISED SURGICAL SERVICES",
+            cls.GENERAL_SPECIALIST_CLINICAL: "GENERAL SPECIALIST CLINICAL SERVICES (MEDICINE, PAEDS, O&G, ENT, DENTAL, ETC.)",
+            cls.LABORATORY_PATHOLOGY: "LABORATORY / PATHOLOGY / BLOOD SERVICES",
+            cls.HOSPITAL_INFRASTRUCTURE: "HOSPITAL INFRASTRUCTURE & UTILITIES (SUPPORT SYSTEMS) (POWER/WATER/WASTE/RENOVATIONS THAT ARE HOSPITAL-WIDE)",
+            cls.ICT_DIGITAL_HEALTH: "ICT / DIGITAL HEALTH SYSTEMS (IF YOU WANT THAT TRACKED DISTINCTLY)",
+            cls.ICU_NICU: "ICU / NICU (ADULT AND NEONATAL INTENSIVE CARE SERVICES)",
+            cls.EMERGENCY_TRAUMA: "EMERGENCY AND TRAUMA CARE",
+        }
+        return display_map.get(enum_value, enum_value.value)
+
+
+class PrimaryHealthService(str, Enum):
+    """Primary health care service types"""
+    BASIC_HEALTHCARE_PROVISION_FUND = "BASIC_HEALTHCARE_PROVISION_FUND"
+    ROUTINE_IMMUNIZATION = "ROUTINE_IMMUNIZATION"
+    MATERNAL_NEWBORN_CHILD_HEALTH = "MATERNAL_NEWBORN_CHILD_HEALTH"
+    NUTRITION = "NUTRITION"
+    MALARIA = "MALARIA"
+    FAMILY_PLANNING = "FAMILY_PLANNING"
+    
+    @classmethod
+    def _missing_(cls, value):
+        if not value or not isinstance(value, str):
+            return None
+        
+        value_upper = value.upper()
+        
+        mapping = {
+            "BASIC HEALTHCARE": cls.BASIC_HEALTHCARE_PROVISION_FUND,
+            "BHCPF": cls.BASIC_HEALTHCARE_PROVISION_FUND,
+            "BASIC HEALTHCARE PROVISION": cls.BASIC_HEALTHCARE_PROVISION_FUND,
+            "ROUTINE IMMUNIZATION": cls.ROUTINE_IMMUNIZATION,
+            "IMMUNIZATION": cls.ROUTINE_IMMUNIZATION,
+            "RI": cls.ROUTINE_IMMUNIZATION,
+            "MATERNAL": cls.MATERNAL_NEWBORN_CHILD_HEALTH,
+            "NEWBORN": cls.MATERNAL_NEWBORN_CHILD_HEALTH,
+            "CHILD HEALTH": cls.MATERNAL_NEWBORN_CHILD_HEALTH,
+            "MNCH": cls.MATERNAL_NEWBORN_CHILD_HEALTH,
+            "NUTRITION": cls.NUTRITION,
+            "MALARIA": cls.MALARIA,
+            "FAMILY PLANNING": cls.FAMILY_PLANNING,
+        }
+        
+        for key, enum_value in mapping.items():
+            if key in value_upper:
+                return enum_value
+        
+        return None
+    
+    @classmethod
+    def get_display_value(cls, enum_value):
+        display_map = {
+            cls.BASIC_HEALTHCARE_PROVISION_FUND: "BASIC HEALTHCARE PROVISION FUND (BHCPF)",
+            cls.ROUTINE_IMMUNIZATION: "ROUTINE IMMUNIZATION (RI)",
+            cls.MATERNAL_NEWBORN_CHILD_HEALTH: "MATERNAL, NEWBORN AND CHILD HEALTH",
+            cls.NUTRITION: "NUTRITION",
+            cls.MALARIA: "MALARIA",
+            cls.FAMILY_PLANNING: "FAMILY PLANNING",
+        }
+        return display_map.get(enum_value, enum_value.value)
+
+
+class SecondaryHealthService(str, Enum):
+    """Secondary health care service types"""
+    BASIC_HEALTHCARE_PROVISION_FUND = "BASIC_HEALTHCARE_PROVISION_FUND"
+    ROUTINE_IMMUNIZATION = "ROUTINE_IMMUNIZATION"
+    MATERNAL_NEWBORN_CHILD_HEALTH = "MATERNAL_NEWBORN_CHILD_HEALTH"
+    NUTRITION = "NUTRITION"
+    MALARIA = "MALARIA"
+    FAMILY_PLANNING = "FAMILY_PLANNING"
+    
+    @classmethod
+    def _missing_(cls, value):
+        if not value or not isinstance(value, str):
+            return None
+        
+        value_upper = value.upper()
+        
+        mapping = {
+            "BASIC HEALTHCARE": cls.BASIC_HEALTHCARE_PROVISION_FUND,
+            "BHCPF": cls.BASIC_HEALTHCARE_PROVISION_FUND,
+            "BASIC HEALTHCARE PROVISION": cls.BASIC_HEALTHCARE_PROVISION_FUND,
+            "ROUTINE IMMUNIZATION": cls.ROUTINE_IMMUNIZATION,
+            "IMMUNIZATION": cls.ROUTINE_IMMUNIZATION,
+            "RI": cls.ROUTINE_IMMUNIZATION,
+            "MATERNAL": cls.MATERNAL_NEWBORN_CHILD_HEALTH,
+            "NEWBORN": cls.MATERNAL_NEWBORN_CHILD_HEALTH,
+            "CHILD HEALTH": cls.MATERNAL_NEWBORN_CHILD_HEALTH,
+            "MNCH": cls.MATERNAL_NEWBORN_CHILD_HEALTH,
+            "NUTRITION": cls.NUTRITION,
+            "MALARIA": cls.MALARIA,
+            "FAMILY PLANNING": cls.FAMILY_PLANNING,
+        }
+        
+        for key, enum_value in mapping.items():
+            if key in value_upper:
+                return enum_value
+        
+        return None
+    
+    @classmethod
+    def get_display_value(cls, enum_value):
+        display_map = {
+            cls.BASIC_HEALTHCARE_PROVISION_FUND: "BASIC HEALTHCARE PROVISION FUND (BHCPF)",
+            cls.ROUTINE_IMMUNIZATION: "ROUTINE IMMUNIZATION (RI)",
+            cls.MATERNAL_NEWBORN_CHILD_HEALTH: "MATERNAL, NEWBORN AND CHILD HEALTH",
+            cls.NUTRITION: "NUTRITION",
+            cls.MALARIA: "MALARIA",
+            cls.FAMILY_PLANNING: "FAMILY PLANNING",
+        }
+        return display_map.get(enum_value, enum_value.value)
 
 
 class Project(db.Model):
@@ -306,23 +578,43 @@ class SurveyResponse(db.Model):
         db.Numeric(20, 2), nullable=True
     )  # "What is the Appropriation"
 
-    # ===== OUTCOME CLASSIFICATION =====
+    # ===== OUTCOME CLASSIFICATION (Now using Enums) =====
     intermediate_outcome = db.Column(
-        db.Text, nullable=True
-    )  # "WHAT INTERMEDIATE OUTCOME DOES THIS BUDGET/PROJECT SPEAK TO"
+        db.Enum(IntermediateOutcome, name="intermediate_outcome_enum"),
+        nullable=True,
+        index=True
+    )
 
-    # ===== HEALTH CATEGORIZATION =====
-    category = db.Column(db.String(200), nullable=True, index=True)  # "CATEGORY"
-    health_care_service = db.Column(db.Text, nullable=True)  # "HEALTH CARE SERVICE"
+    # ===== HEALTH CATEGORIZATION (Now using Enums) =====
+    category = db.Column(
+        db.Enum(BudgetCategory, name="budget_category_enum"),
+        nullable=True,
+        index=True
+    )
+    
+    health_care_service = db.Column(
+        db.Enum(HealthCareService, name="health_care_service_enum"),
+        nullable=True,
+        index=True
+    )
+    
     primary_health_care = db.Column(
-        db.Text, nullable=True
-    )  # "PRIMARY HEALTH CARE SERVICES"
+        db.Enum(PrimaryHealthService, name="primary_health_service_enum"),
+        nullable=True,
+        index=True
+    )
+    
     secondary_health_care = db.Column(
-        db.Text, nullable=True
-    )  # "SECONDARY HEALTH CARE SERVICES"
+        db.Enum(SecondaryHealthService, name="secondary_health_service_enum"),
+        nullable=True,
+        index=True
+    )
+    
     tertiary_health_care = db.Column(
-        db.Text, nullable=True
-    )  # "TERTIARY HEALTH CARE SERVICES"
+        db.Enum(TertiaryHealthService, name="tertiary_health_service_enum"),
+        nullable=True,
+        index=True
+    )
 
     # ===== NORMALIZED FIELDS FOR EXTRACTION =====
     # We'll store the extracted ERGP code for faster querying
@@ -421,6 +713,17 @@ class SurveyResponse(db.Model):
             self.match_method = "auto_extract"
 
         return project
+
+    def get_display_values(self):
+        """Get human-readable display values for all enum fields"""
+        return {
+            'intermediate_outcome': IntermediateOutcome.get_display_value(self.intermediate_outcome) if self.intermediate_outcome else None,
+            'category': BudgetCategory.get_display_value(self.category) if self.category else None,
+            'health_care_service': HealthCareService.get_display_value(self.health_care_service) if self.health_care_service else None,
+            'primary_health_care': PrimaryHealthService.get_display_value(self.primary_health_care) if self.primary_health_care else None,
+            'secondary_health_care': SecondaryHealthService.get_display_value(self.secondary_health_care) if self.secondary_health_care else None,
+            'tertiary_health_care': TertiaryHealthService.get_display_value(self.tertiary_health_care) if self.tertiary_health_care else None,
+        }
 
     def to_dict(self):
         """Convert to dictionary for API responses."""

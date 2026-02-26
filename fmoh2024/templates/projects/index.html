@@ -1,0 +1,440 @@
+{% extends 'base.html' %}
+
+{% block title %}Projects — FY {{ fiscal_year }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <h1 class="page-title">Budget Projects</h1>
+    <div class="page-meta">
+      <span class="fiscal-year-badge">FY {{ fiscal_year }}</span>
+      <span class="text-muted" id="project-count">Loading...</span>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-responsive">
+      <table id="projects-table" class="table table-hover" style="width:100%">
+        <thead>
+          <tr>
+            <th>ERGP CODE</th>
+            <th>PROJECT NAME</th>
+            <th>AGENCY</th>
+            <th>HEALTH CARE SERVICE</th>
+            <th>INTERMEDIATE OUTCOME</th>
+            <th>CATEGORY</th>
+            <th>SERVICE DETAIL</th>
+          </tr>
+          <tr class="filters">
+                <th><input type="text" placeholder="Filter code..." class="filter-input" /></th>
+                <th><input type="text" placeholder="Filter project..." class="filter-input" /></th>
+                <th><input type="text" placeholder="Filter agency..." class="filter-input" /></th>
+                <th>
+                    <select class="filter-select" data-column="health_care_service">
+                        <option value="">All Services</option>
+                        <option value="PRIMARY">Primary Health Care</option>
+                        <option value="SECONDARY">Secondary Health Care</option>
+                        <option value="TERTIARY">Tertiary Health Care</option>
+                    </select>
+                </th>
+                <th>
+                    <select class="filter-select" data-column="intermediate_outcome">
+                        <option value="">All Outcomes</option>
+                        <option value="EQUITY">Equity</option>
+                        <option value="QUALITY">Quality</option>
+                        <option value="UTILIZATION">Utilization</option>
+                        <option value="FINANCIAL_RISK">Financial Risk</option>
+                    </select>
+                </th>
+                <th>
+                    <select class="filter-select" data-column="category">
+                        <option value="">All Categories</option>
+                        <option value="FIXED_ASSETS">Fixed Assets</option>
+                        <option value="INFRASTRUCTURE">Infrastructure</option>
+                        <option value="RENOVATION_REPAIRS">Renovation & Repairs</option>
+                        <option value="PROGRAMS">Programs</option>
+                        <option value="OTHERS">Others</option>
+                    </select>
+                </th>
+                <th><input type="text" placeholder="Filter detail..." class="filter-input" /></th>
+            </tr>
+        </thead>
+        <tbody>
+          <!-- Server-side populated -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<style>
+  /* Page Header */
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--line);
+  }
+
+  .page-title {
+    margin: 0;
+    color: var(--primary-dark);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .page-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .text-muted {
+    color: var(--ink3);
+    font-size: 14px;
+  }
+
+  /* Table Card */
+  .table-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--line);
+    overflow: hidden;
+  }
+
+  /* DataTables Customization */
+  .dataTables_wrapper {
+    padding: 20px;
+  }
+
+  .dataTables_length,
+  .dataTables_filter,
+  .dataTables_info,
+  .dataTables_paginate {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    color: var(--ink2);
+  }
+
+  .dataTables_length select,
+  .dataTables_filter input {
+    font-family: 'IBM Plex Sans', sans-serif;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--surface);
+  }
+
+  .dataTables_filter input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(75,170,115,.12);
+  }
+
+  /* Filter Inputs */
+  .filter-input,
+  .filter-select {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    color: var(--ink);
+    background: var(--surface);
+    transition: all .15s;
+  }
+
+  .filter-input:focus,
+  .filter-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(75,170,115,.12);
+  }
+
+  .filter-input::placeholder {
+    color: var(--ink3);
+    opacity: 0.7;
+  }
+  
+  .filter-select {
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 10px;
+    padding-right: 28px;
+  }
+
+  /* Table Styling */
+  #projects-table {
+    margin-top: 0 !important;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  #projects-table thead tr:first-child th {
+    background: var(--bg2);
+    color: var(--ink3);
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 14px 12px;
+    border-bottom: 2px solid var(--line);
+  }
+
+  #projects-table thead tr.filters th {
+    background: var(--primary-xl);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  #projects-table tbody td {
+    padding: 14px 12px;
+    color: var(--ink);
+    font-size: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  #projects-table tbody tr:hover {
+    background: var(--primary-light);
+  }
+
+  /* Code Column Styling */
+  .code-cell {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--primary-dark);
+  }
+
+  .appropriation-amount {
+    font-size: 11px;
+    color: var(--ink3);
+    margin-top: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* Pagination */
+  .dataTables_paginate .paginate_button {
+    padding: 6px 12px;
+    margin: 0 2px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--ink2);
+    cursor: pointer;
+    transition: all .15s;
+  }
+
+  .dataTables_paginate .paginate_button:hover {
+    background: var(--primary-light);
+    border-color: var(--primary-color);
+    color: var(--primary-dark);
+  }
+
+  .dataTables_paginate .paginate_button.current {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+  }
+
+  .dataTables_paginate .paginate_button.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Processing Overlay */
+  .dataTables_processing {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px 30px;
+    box-shadow: var(--shadow);
+    color: var(--ink2);
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  /* Empty State */
+  .dataTables_empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--ink3);
+    font-style: italic;
+  }
+
+  /* Sorting Icons */
+  table.dataTable thead .sorting,
+  table.dataTable thead .sorting_asc,
+  table.dataTable thead .sorting_desc {
+    background-image: none;
+  }
+
+  table.dataTable thead .sorting:after,
+  table.dataTable thead .sorting_asc:after,
+  table.dataTable thead .sorting_desc:after {
+    font-family: 'IBM Plex Sans', sans-serif;
+    margin-left: 8px;
+    opacity: 0.5;
+  }
+
+  table.dataTable thead .sorting:after {
+    content: '⇅';
+  }
+
+  table.dataTable thead .sorting_asc:after {
+    content: '↑';
+    opacity: 1;
+    color: var(--primary-color);
+  }
+
+  table.dataTable thead .sorting_desc:after {
+    content: '↓';
+    opacity: 1;
+    color: var(--primary-color);
+  }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<script>
+$(document).ready(function() {
+  // Initialize DataTable
+  var table = $('#projects-table').DataTable({
+    processing: true,
+    serverSide: true,
+    ajax: {
+      url: "{{ url_for('projects.api_projects') }}",
+      data: function(d) {
+        d.fiscal_year = '{{ fiscal_year }}';
+      },
+      error: function(xhr, error, code) {
+        console.error('DataTables Ajax error:', error, code);
+        console.error('Response:', xhr.responseText);
+      }
+    },
+    pageLength: 25,
+    lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+    order: [[1, 'asc']], // Sort by project name by default
+    columns: [
+      { 
+        data: 'code',
+        render: function(data, type, row) {
+          if (type === 'display') {
+            var html = '<div class="code-cell">' + (data || '—') + '</div>';
+            if (row.appropriation !== null && row.appropriation !== undefined) {
+              var amount = parseFloat(row.appropriation).toLocaleString('en-NG', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              });
+              html += '<div class="appropriation-amount">₦' + amount + '</div>';
+            }
+            return html;
+          }
+          return data || '';
+        }
+      },
+      { 
+        data: 'project_name',
+        render: function(data, type, row) {
+          return data || '—';
+        }
+      },
+      { 
+        data: 'agency',
+        render: function(data, type, row) {
+          return data || '—';
+        }
+      },
+      { 
+        data: 'health_care_service',
+        render: function(data, type, row) {
+          return data || '—';
+        }
+      },
+      { 
+        data: 'intermediate_outcome',
+        render: function(data, type, row) {
+          return data || '—';
+        }
+      },
+      { 
+        data: 'category',
+        render: function(data, type, row) {
+          return data || '—';
+        }
+      },
+      { 
+        data: 'service_detail',
+        render: function(data, type, row) {
+          return data || '—';
+        }
+      }
+    ],
+    language: {
+      processing: "Loading projects...",
+      emptyTable: "No projects found",
+      zeroRecords: "No matching projects found",
+      info: "Showing _START_ to _END_ of _TOTAL_ projects",
+      infoEmpty: "Showing 0 to 0 of 0 projects",
+      infoFiltered: "(filtered from _MAX_ total projects)",
+      lengthMenu: "Show _MENU_ projects",
+      search: "Search all columns:"
+    },
+    drawCallback: function(settings) {
+      // Update project count
+      var info = this.api().page.info();
+      $('#project-count').text(info.recordsTotal + ' projects');
+    }
+  });
+
+  // Wire filter inputs to column searches
+  $('#projects-table thead tr.filters th').each(function(i) {
+    var input = $(this).find('input');
+    var select = $(this).find('select');
+    
+    if (input.length) {
+      // Debounce filter input for text fields
+      var timeout = null;
+      input.on('keyup change', function() {
+        var self = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(function() {
+          if (table.column(i).search() !== self.value) {
+            table.column(i).search(self.value).draw();
+          }
+        }, 400);
+      });
+    }
+    
+    if (select.length) {
+      // Handle select dropdowns immediately
+      select.on('change', function() {
+        var val = $(this).val();
+        if (table.column(i).search() !== val) {
+          table.column(i).search(val).draw();
+        }
+      });
+    }
+  });
+
+  // Prevent sorting when clicking on filter inputs
+  $('#projects-table thead tr.filters th').on('click', function(e) {
+    e.stopPropagation();
+  });
+});
+</script>
+{% endblock %}
