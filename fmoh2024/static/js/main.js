@@ -95,4 +95,51 @@ document.addEventListener('DOMContentLoaded', () => {
             link.classList.add('active');
         }
     });
+
+    /* mobile navigation toggle */
+    const navToggle = document.querySelector('.nav-toggle');
+    const navWrapper = document.querySelector('.nav-menu-wrapper');
+    const navClose = document.querySelector('.nav-close');
+    const navBackdrop = document.querySelector('.nav-backdrop');
+
+    function openNav() {
+        if (navWrapper) navWrapper.classList.add('open');
+        if (navBackdrop) navBackdrop.classList.add('active');
+        if (navToggle) navToggle.setAttribute('aria-expanded', 'true');
+    }
+    function closeNav() {
+        if (navWrapper) navWrapper.classList.remove('open');
+        if (navBackdrop) navBackdrop.classList.remove('active');
+        if (navToggle) navToggle.setAttribute('aria-expanded', 'false');
+    }
+
+    if (navToggle) {
+        navToggle.addEventListener('click', openNav);
+    }
+
+    if (navClose) {
+        navClose.addEventListener('click', closeNav);
+    }
+
+    // clicking backdrop should also close
+    if (navBackdrop) {
+        navBackdrop.addEventListener('click', closeNav);
+    }
+
+    // close when clicking outside the menu (fallback)
+    document.addEventListener('click', (evt) => {
+        if (navWrapper && navWrapper.classList.contains('open')) {
+            const target = evt.target;
+            if (!navWrapper.contains(target) && !navToggle.contains(target)) {
+                closeNav();
+            }
+        }
+    });
+
+    // close menu when any link inside it is clicked (mobile)
+    document.querySelectorAll('.nav-menu .nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+            closeNav();
+        });
+    });
 });

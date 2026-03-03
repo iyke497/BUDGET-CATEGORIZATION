@@ -26,16 +26,27 @@
                     >
                 </a>
             </div>
-            <ul class="nav-menu">
-                <li><a href="{{ url_for('main.index') }}" class="nav-link">Home</a></li>
-                <li><a href="{{ url_for('compliance.dashboard') }}" class="nav-link">Compliance Dashboard</a></li>
-                <li><a href="{{ url_for('projects.index') }}" class="nav-link">Projects</a></li>
-            </ul>
+
+            <!-- navigation wrapper (used for off-canvas on mobile) -->
+            <div class="nav-menu-wrapper">
+                <button class="nav-close" aria-label="Close navigation">&times;</button>
+                <ul class="nav-menu">
+                    <li><a href="{{ url_for('main.index') }}" class="nav-link">Home</a></li>
+                    <li><a href="{{ url_for('compliance.dashboard') }}" class="nav-link">Compliance Dashboard</a></li>
+                    <li><a href="{{ url_for('projects.index') }}" class="nav-link">Projects</a></li>
+                </ul>
+            </div>
+
             <div class="nav-right">
                 <span class="fiscal-year-badge">FY 2024</span>
             </div>
+
+            <!-- mobile toggle button - placed last so it's on the right -->
+            <button class="nav-toggle" aria-label="Open navigation" aria-expanded="false">&#9776;</button>
         </div>
     </nav>
+    <!-- backdrop overlay for mobile nav -->
+    <div class="nav-backdrop"></div>
 
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}

@@ -81,7 +81,7 @@ body {
     border-bottom: 3px solid var(--primary-color);
     position: sticky;
     top: 0;
-    z-index: 50;
+    z-index: 100; /* Increased to ensure navbar and menu are above backdrop */
 }
 
 .navbar .container {
@@ -89,6 +89,8 @@ body {
     justify-content: space-between;
     align-items: center;
     height: 64px;
+    flex-wrap: nowrap; /* keep elements on one line */
+    position: relative; /* for z-index context */
 }
 
 .nav-brand a {
@@ -100,6 +102,7 @@ body {
     align-items: center;
     gap: 8px;
     transition: opacity .15s;
+    flex-shrink: 0; /* prevent shrinking */
 }
 
 .brand-logo {
@@ -123,6 +126,97 @@ body {
     gap: 4px;
     padding: 0;
     margin: 0;
+}
+
+/* toggle / offcanvas helpers */
+.nav-toggle,
+.nav-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--ink2);
+    display: none; /* show only on small screens */
+}
+
+/* wrapper used for sliding panel */
+.nav-menu-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    .navbar .container {
+        justify-content: space-between;
+        flex-wrap: nowrap; /* ensure no wrapping even on tight widths */
+        height: 64px; /* maintain consistent height */
+    }
+    .nav-brand {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0; /* prevent logo from shrinking */
+    }
+    .nav-toggle {
+        display: block;
+        margin-left: auto; /* push to the right */
+        flex-shrink: 0;
+        z-index: 160; /* ensure toggle is clickable */
+    }
+    .nav-menu-wrapper {
+        position: fixed;
+        top: 0;
+        left: -260px;
+        width: 260px;
+        height: 100%;
+        background: var(--surface);
+        box-shadow: 2px 0 8px rgba(0,0,0,.1);
+        transition: left .3s ease;
+        flex-direction: column;
+        padding-top: 60px; /* space for close button */
+        z-index: 150; /* Higher than backdrop (90) but part of navbar context */
+        overflow-y: auto; /* allow scrolling if menu is long */
+        pointer-events: none; /* disable interactions when closed */
+    }
+    .nav-menu-wrapper.open {
+        left: 0;
+        pointer-events: auto; /* enable interactions when open */
+    }
+    .nav-close {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        display: block;
+        z-index: 151; /* ensure close button is clickable */
+    }
+    .nav-menu {
+        flex-direction: column;
+        gap: 0;
+    }
+    .nav-link {
+        padding: 12px 20px;
+        position: relative; /* create stacking context for links */
+        z-index: 151; /* ensure links are above everything */
+    }
+    .nav-right {
+        display: none;
+    }
+
+    /* backdrop shown behind open menu */
+    .nav-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.3);
+        z-index: 90; /* Below menu wrapper */
+        display: none;
+        pointer-events: none; /* Let clicks pass through to menu */
+    }
+    .nav-backdrop.active {
+        display: block;
+        pointer-events: auto; /* Enable clicks to close menu */
+    }
 }
 
 .nav-link {
@@ -438,28 +532,3 @@ tbody tr:hover {
 
 .hidden { display: none; }
 .visible { display: block; }
-
-/* ===== RESPONSIVE DESIGN ===== */
-@media (max-width: 768px) {
-    .navbar .container {
-        flex-direction: column;
-        gap: 14px;
-        height: auto;
-        padding: 14px 20px;
-    }
-    
-    .nav-menu {
-        flex-direction: column;
-        text-align: center;
-        width: 100%;
-        gap: 4px;
-    }
-    
-    .nav-menu li {
-        width: 100%;
-    }
-    
-    .nav-link {
-        display: block;
-    }
-}
